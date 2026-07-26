@@ -45,7 +45,7 @@ export default function Hero() {
         />
         <div style={{ perspective: 1000 }}>
           <motion.img
-            src="/sprout.png"
+            src={`${process.env.PUBLIC_URL}/sprout.png`}
             alt=""
             data-testid="hero-sprout"
             className="relative h-[52vh] md:h-[68vh] w-auto"

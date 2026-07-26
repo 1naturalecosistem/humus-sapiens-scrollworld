@@ -34,7 +34,7 @@ export default function BeeFollower() {
       data-testid="scroll-bee"
     >
       <motion.img
-        src="/bee.png"
+        src={`${process.env.PUBLIC_URL}/bee.png`}
         alt=""
         className="w-14 md:w-20 h-auto select-none"
         animate={{ y: [0, -4, 0], scaleX: [1, 0.94, 1] }}

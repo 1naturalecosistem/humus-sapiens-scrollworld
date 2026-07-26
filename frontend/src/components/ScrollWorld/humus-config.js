@@ -7,17 +7,19 @@
 // FRAME SWAP (Gemini / Higgsfield render):
 // drop the new sequence into public/assets/frames/<set>/ keeping the naming
 // `humus_frame_0001.webp … humus_frame_NNNN.webp`, then update `frames.count`.
-// Current sequence: real frames extracted from DJI_0184.MP4 (241 frames).
+// Current sequence: real drone footage, 300 frames sampled evenly across a
+// single ~157s flight made of 3 clips (0.MP4, 1.MP4, 2.MP4) joined with a
+// 1.5s crossfade at each cut for a continuous, uninterrupted flight.
 // ============================================================================
 
 export const HUMUS_SCROLL_WORLD = {
   frames: {
-    basePath: "/assets/frames",
+    basePath: `${process.env.PUBLIC_URL}/assets/frames`,
     prefix: "humus_frame_",
     ext: "webp",
     pad: 4,          // humus_frame_0001
     firstIndex: 1,
-    count: 241,
+    count: 300,
     // resolution sets: key -> subfolder. Picked at runtime (viewport + network).
     sets: {
       desktop: "1600",
@@ -36,15 +38,15 @@ export const HUMUS_SCROLL_WORLD = {
   skipTargetId: "chi-siamo",
 
   // Drone height above ground during the flight (m AGL), as [progress%, meters].
-  // [Inferenza] estimated profile of DJI_0184 — edit freely, it is display-only.
+  // [Inferenza] estimated profile of the joined flight — edit freely, it is display-only.
   altitudeProfile: [
-    [0, 12],
-    [12, 38],
-    [30, 64],
-    [52, 96],
-    [72, 74],
-    [88, 42],
-    [100, 16],
+    [0, 5],
+    [10, 45],
+    [32, 58],
+    [54, 52],
+    [75, 38],
+    [94, 50],
+    [100, 45],
   ],
 
   // Minimap: stylised property outline + flight path (0–100 viewBox units).
@@ -68,7 +70,7 @@ export const HUMUS_SCROLL_WORLD = {
   hotspots: [
     {
       id: "arrivo",
-      at: 8,
+      at: 10,
       dwell: 6,
       pos: { x: "7%", y: "16%" },
       target: "il-luogo",
@@ -76,7 +78,7 @@ export const HUMUS_SCROLL_WORLD = {
         eyebrow: "01 · L'Arrivo",
         title: "Il casale tra i castagni",
         body:
-          "Il volo comincia sopra il cuore di Humus Sapiens: il casale in pietra dell'Alta Val di Vara, dove terra viva e sapienza contadina si incontrano.",
+          "Il volo comincia sopra il cuore di Humus Sapiens: un anfiteatro di terrazzamenti, tre case, un sistema dove terra viva e sapienza contadina si incontrano.",
         cta: "Scopri il luogo",
         ctaSecondary: "Scopri di più",
       },
@@ -84,28 +86,28 @@ export const HUMUS_SCROLL_WORLD = {
         eyebrow: "01 · The Arrival",
         title: "The farmhouse among chestnut trees",
         body:
-          "The flight begins above the heart of Humus Sapiens: the stone farmhouse of Alta Val di Vara, where living soil and rural wisdom meet.",
+          "The flight begins above the heart of Humus Sapiens: an amphitheatre of terraces, three houses, a system where living soil and rural wisdom meet.",
         cta: "Discover the place",
         ctaSecondary: "Learn more",
       },
     },
     {
       id: "ospitalita",
-      at: 24,
+      at: 32,
       dwell: 6,
       pos: { x: "55%", y: "14%" },
       target: "agricampeggio",
       it: {
-        eyebrow: "02 · Ospitalità Rurale",
-        title: "Camere e agricampeggio",
+        eyebrow: "02 · Ospitalità Rurale, turistica, sociale, formativa, esperienziale.",
+        title: "Ponente e Levante, due strutture, indipendenti e immerse nella natura",
         body:
           "Le camere verde, gialla e arancio, la cucina condivisa e il campo tra gli alberi: un'ospitalità semplice, radicata, rigenerativa.",
         cta: "Prenota ora",
         ctaSecondary: "Vedi le camere",
       },
       en: {
-        eyebrow: "02 · Rural Hospitality",
-        title: "Rooms & agri-camping",
+        eyebrow: "02 · Rural, tourism, social, educational and experiential hospitality.",
+        title: "Ponente and Levante, two structures, independent and immersed in nature",
         body:
           "The green, yellow and orange rooms, the shared kitchen and the field among the trees: simple, rooted, regenerative hospitality.",
         cta: "Book now",
@@ -113,36 +115,13 @@ export const HUMUS_SCROLL_WORLD = {
       },
     },
     {
-      id: "apiario",
-      at: 42,
-      dwell: 6,
-      pos: { x: "8%", y: "38%" },
-      target: "bee-humus",
-      it: {
-        eyebrow: "03 · L'Apiario",
-        title: "Le api, sentinelle della valle",
-        body:
-          "Arnie tra i fiori spontanei: apicoltura, selezione delle regine e formazione. Il miele racconta la salute dell'intero ecosistema.",
-        cta: "Il mondo delle api",
-        ctaSecondary: "Scopri di più",
-      },
-      en: {
-        eyebrow: "03 · The Apiary",
-        title: "Bees, sentinels of the valley",
-        body:
-          "Hives among wildflowers: beekeeping, queen selection and training. Honey tells the health of the whole ecosystem.",
-        cta: "The world of bees",
-        ctaSecondary: "Learn more",
-      },
-    },
-    {
       id: "permacultura",
-      at: 58,
+      at: 54,
       dwell: 6,
       pos: { x: "56%", y: "40%" },
       target: "shop",
       it: {
-        eyebrow: "04 · Orto & Permacultura",
+        eyebrow: "03 · Orto & Permacultura",
         title: "Coltivare imitando il bosco",
         body:
           "Ortaggi, frutti e piante officinali crescono in policoltura, senza chimica: il suolo si rigenera e diventa raccolto.",
@@ -150,7 +129,7 @@ export const HUMUS_SCROLL_WORLD = {
         ctaSecondary: "Scopri di più",
       },
       en: {
-        eyebrow: "04 · Garden & Permaculture",
+        eyebrow: "03 · Garden & Permaculture",
         title: "Farming like a forest",
         body:
           "Vegetables, fruit and medicinal plants grow in polyculture, chemical-free: the soil regenerates and becomes harvest.",
@@ -160,21 +139,21 @@ export const HUMUS_SCROLL_WORLD = {
     },
     {
       id: "bosco",
-      at: 74,
+      at: 75,
       dwell: 6,
       pos: { x: "7%", y: "18%" },
       target: "il-luogo",
       it: {
-        eyebrow: "05 · Il Bosco",
-        title: "ZSC Alta Val di Vara",
+        eyebrow: "04 · Il Bosco",
+        title: "ZSC Alta Val Petronio",
         body:
           "Il volo attraversa la Zona Speciale di Conservazione: corridoi ecologici, biodiversità, acqua. Qui si misura la rigenerazione.",
         cta: "Esplora il territorio",
         ctaSecondary: "Scopri di più",
       },
       en: {
-        eyebrow: "05 · The Forest",
-        title: "Alta Val di Vara protected area",
+        eyebrow: "04 · The Forest",
+        title: "Natura 2000 · Alta Val Petronio",
         body:
           "The flight crosses the Special Area of Conservation: ecological corridors, biodiversity, water. Regeneration is measured here.",
         cta: "Explore the land",
@@ -183,12 +162,12 @@ export const HUMUS_SCROLL_WORLD = {
     },
     {
       id: "tramonto",
-      at: 91,
+      at: 94,
       dwell: 8,
       pos: { x: "50%", y: "22%" },
       target: "contatti",
       it: {
-        eyebrow: "06 · Il Tramonto",
+        eyebrow: "05 · Il Tramonto",
         title: "Resta a guardarlo da qui",
         body:
           "La luce scende sul crinale e la valle rallenta. Il posto migliore per vederlo non è uno schermo: è la terrazza del casale.",
@@ -196,7 +175,7 @@ export const HUMUS_SCROLL_WORLD = {
         ctaSecondary: "Contattaci",
       },
       en: {
-        eyebrow: "06 · The Sunset",
+        eyebrow: "05 · The Sunset",
         title: "Stay and watch it from here",
         body:
           "Light falls on the ridge and the valley slows down. The best place to watch it is not a screen: it is the farmhouse terrace.",

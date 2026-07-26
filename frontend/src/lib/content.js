@@ -4,12 +4,12 @@
 // Real farm photos live in /public (source: Foto e Video/Foto HS/).
 // beekeepers + honeyJar are still stock: waiting for real Bee Humus shots.
 export const IMAGES = {
-  soilHands: "/casale.jpg", // aerial view of the farm
-  tentForest: "/terrazza.jpg", // picnic table overlooking the sea
+  soilHands: `${process.env.PUBLIC_URL}/casale.jpg`, // aerial view of the farm
+  tentForest: `${process.env.PUBLIC_URL}/terrazza.jpg`, // picnic table overlooking the sea
   beekeepers: "https://images.pexels.com/photos/2260932/pexels-photo-2260932.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=1000&w=800",
   honeyJar: "https://images.pexels.com/photos/4921856/pexels-photo-4921856.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=1000&w=800",
-  community: "/tramonto.jpg", // sunset over the valley fence
-  luogo: "/valle.jpg", // wide sunset panorama towards the sea
+  community: `${process.env.PUBLIC_URL}/tramonto.jpg`, // sunset over the valley fence
+  luogo: `${process.env.PUBLIC_URL}/valle.jpg`, // wide sunset panorama towards the sea
 };
 
 export const CONTACT = {
@@ -51,7 +51,7 @@ export const NAV = {
 // Honey shop — extendable with new products later.
 export const SHOP = {
   castagno: {
-    label: "/label_castagno.png",
+    label: `${process.env.PUBLIC_URL}/label_castagno.png`,
     accent: "#8a5a2b",
     it: { name: "Miele di Castagno", note: "Estratto a freddo, non pastorizzato, integrale. Così come lo fanno le api.", tagline: "Delle colline dell'Alta Val Petronio" },
     en: { name: "Chestnut Honey", note: "Cold-extracted, unpasteurised, whole. Just as the bees make it.", tagline: "From the hills of the Alta Val Petronio" },
@@ -62,7 +62,7 @@ export const SHOP = {
     ],
   },
   millefiori: {
-    label: "/label_millefiori.png",
+    label: `${process.env.PUBLIC_URL}/label_millefiori.png`,
     accent: "#5a4a2b",
     it: { name: "Miele Millefiori", note: "Piantate, curate, coltivate e raccolte a mano. Dentro il vasetto, nettare di fiori selvatici.", tagline: "Delle colline dell'Alta Val Petronio" },
     en: { name: "Wildflower Honey", note: "Planted, tended, grown and hand-harvested. Inside the jar, nectar of wildflowers.", tagline: "From the hills of the Alta Val Petronio" },
@@ -164,16 +164,16 @@ export const ARTICLES = [
 export const CONTENT = {
   it: {
     hero: {
-      kicker: "Azienda Agricola Rigenerativa · Alta Val Petronio",
+      kicker: "Azienda Agricola Sociale, Agriturismo, Apicoltura · Alta Val Petronio",
       line1: "Humus",
       line2: "Sapiens",
-      tagline: "Terra · Persona · Comunità.",
+      tagline: "Terra · Persona · Crescita · Rigenerazione.",
       intro:
-        "Un'azienda agricola rigenerativa nell'entroterra di Sestri Levante, dentro la Rete Natura 2000. Coltiviamo suolo vivo, accogliamo persone, restituiamo più di quanto prendiamo.",
+        "Un'azienda agricola rigenerativa immersa nel verde dell'entroterra di Sestri Levante, dentro la Rete Natura 2000. Suolo vivo, accogliamo persone, restituiamo più di quanto prendiamo.",
       scroll: "Scorri",
       cta: "Scopri il progetto",
     },
-    marquee: ["Suolo vivo", "Permacultura", "One Health", "Rigenerativo non decorativo", "Comunità", "Biodiversità"],
+    marquee: ["Biodiversità", "Permacultura", "One Health", "Rigenerazione", "Comunità", "Crescita"],
     chiSiamo: {
       label: "Chi Siamo",
       heading: "La terra come",
@@ -349,13 +349,13 @@ export const CONTENT = {
       kicker: "Regenerative Farm · Alta Val Petronio, Liguria",
       line1: "Humus",
       line2: "Sapiens",
-      tagline: "Soil · People · Community.",
+      tagline: "Soil · People · Growth · Regeneration.",
       intro:
-        "A regenerative family farm in the hills behind Sestri Levante, inside a Natura 2000 area. We grow living soil, host people, and give back more than we take.",
+        "A regenerative farm immersed in the green hills behind Sestri Levante, inside the Natura 2000 network. Living soil, we welcome people, we give back more than we take.",
       scroll: "Scroll",
       cta: "Discover the project",
     },
-    marquee: ["Living soil", "Permaculture", "One Health", "Regenerative, not decorative", "Community", "Biodiversity"],
+    marquee: ["Biodiversity", "Permaculture", "One Health", "Regeneration", "Community", "Growth"],
     chiSiamo: {
       label: "About Us",
       heading: "The land as a",

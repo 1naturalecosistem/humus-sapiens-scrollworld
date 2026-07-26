@@ -41,7 +41,7 @@ export default function Header() {
             onClick={() => go("hero")}
             className="flex items-center gap-3 group"
           >
-            <img src="/logo.png" alt="Humus Sapiens" className="h-11 w-11 md:h-12 md:w-12 object-contain transition-transform duration-500 group-hover:rotate-6" />
+            <img src={`${process.env.PUBLIC_URL}/logo.png`} alt="Humus Sapiens" className="h-11 w-11 md:h-12 md:w-12 object-contain transition-transform duration-500 group-hover:rotate-6" />
             <span className="hidden sm:block font-display text-xl md:text-2xl leading-none text-[#1A3626] tracking-tight">
               Humus <span className="italic font-light">Sapiens</span>
             </span>

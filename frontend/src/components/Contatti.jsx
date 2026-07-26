@@ -56,7 +56,7 @@ export default function Contatti() {
         <div className="mx-auto max-w-[1500px] px-6 md:px-10 pt-16 md:pt-20">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-10">
             <div className="flex items-center gap-4">
-              <img src="/logo.png" alt="Humus Sapiens" className="h-14 w-14 object-contain invert-0" style={{ filter: "brightness(0) saturate(100%) invert(93%) sepia(6%) saturate(400%) hue-rotate(30deg)" }} />
+              <img src={`${process.env.PUBLIC_URL}/logo.png`} alt="Humus Sapiens" className="h-14 w-14 object-contain invert-0" style={{ filter: "brightness(0) saturate(100%) invert(93%) sepia(6%) saturate(400%) hue-rotate(30deg)" }} />
               <div>
                 <div className="font-display text-3xl leading-none">Humus <span className="italic">Sapiens</span></div>
                 <div className="font-mono-label text-[10px] tracking-label text-[#F5F3E9]/60 mt-2">{f.tagline}</div>
@@ -110,6 +110,19 @@ export default function Contatti() {
           </div>
         </div>
       </footer>
+
+      {/* Map — Google Maps embed, right below the footer */}
+      <div className="w-full h-[380px] md:h-[460px]" data-testid="footer-map">
+        <iframe
+          title="Humus Sapiens — Google Maps"
+          src="https://www.google.com/maps?q=44.32,9.42&z=15&output=embed"
+          className="w-full h-full block"
+          style={{ border: 0 }}
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          allowFullScreen
+        />
+      </div>
 
       {privacyOpen && <PrivacyModal onClose={() => setPrivacyOpen(false)} />}
     </section>
