@@ -1,0 +1,399 @@
+/* ============================================================================
+   HUMUS SAPIENS — Scroll World ("Esplora il Territorio")
+   Design tokens reused from src/index.css: paper #F5F3E9, forest #1A3626,
+   soil #2B231D, honey #D48924, sage #D3D9C9. No new fonts introduced.
+   ============================================================================ */
+
+.sw-section {
+  position: relative;
+  width: 100%;
+  background: #0f1d15;
+}
+
+.sw-sticky {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  width: 100%;
+  overflow: hidden;
+  background: #0f1d15;
+}
+
+.sw-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.sw-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to top, rgba(15, 29, 21, 0.55) 0%, rgba(15, 29, 21, 0) 26%),
+    linear-gradient(to bottom, rgba(15, 29, 21, 0.5) 0%, rgba(15, 29, 21, 0) 22%),
+    radial-gradient(120% 90% at 50% 50%, rgba(0, 0, 0, 0) 55%, rgba(15, 29, 21, 0.35) 100%);
+}
+
+/* ---------------------------------------------------------------- intro */
+
+.sw-intro {
+  position: absolute;
+  left: 6vw;
+  bottom: 8vh;
+  z-index: 5;
+  max-width: 32rem;
+  color: #F5F3E9;
+  transition: opacity 0.3s ease-out;
+  pointer-events: none;
+}
+
+.sw-eyebrow {
+  display: inline-block;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #D3D9C9;
+  margin-bottom: 0.9rem;
+}
+
+.sw-intro-title {
+  font-family: "Cormorant Garamond", serif;
+  font-weight: 400;
+  font-size: clamp(2.4rem, 6vw, 4.5rem);
+  line-height: 1;
+  margin: 0 0 0.9rem;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.35);
+}
+
+.sw-hint {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(245, 243, 233, 0.75);
+}
+
+/* ---------------------------------------------------------------- skip */
+
+.sw-skip {
+  position: absolute;
+  top: 6vh;
+  right: 6vw;
+  z-index: 20;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #F5F3E9;
+  background: rgba(26, 54, 38, 0.35);
+  border: 1px solid rgba(245, 243, 233, 0.35);
+  border-radius: 999px;
+  padding: 0.6rem 1.1rem;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  cursor: pointer;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+.sw-skip:hover {
+  background: rgba(26, 54, 38, 0.6);
+  border-color: rgba(245, 243, 233, 0.6);
+}
+
+/* ---------------------------------------------------------------- HUD */
+
+.sw-hud {
+  position: absolute;
+  top: 50%;
+  right: 4vw;
+  transform: translateY(-50%);
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+  color: #F5F3E9;
+}
+
+.sw-hud-rail {
+  position: relative;
+  width: 2px;
+  height: 34vh;
+  min-height: 220px;
+  background: rgba(245, 243, 233, 0.22);
+  border-radius: 2px;
+  overflow: visible;
+}
+.sw-hud-rail-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: linear-gradient(to top, #D48924, #D3D9C9);
+  border-radius: 2px;
+  transition: height 0.05s linear;
+}
+.sw-hud-rail-marker {
+  position: absolute;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #F5F3E9;
+  box-shadow: 0 0 0 3px rgba(212, 137, 36, 0.4);
+  transform: translate(-50%, -50%);
+  transition: top 0.05s linear;
+}
+.sw-hud-readout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: "IBM Plex Mono", monospace;
+}
+.sw-hud-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(245, 243, 233, 0.65);
+}
+.sw-hud-value {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+/* ---------------------------------------------------------------- minimap */
+
+.sw-minimap-wrap {
+  position: absolute;
+  left: 4vw;
+  bottom: 4vh;
+  z-index: 15;
+}
+.sw-minimap {
+  width: clamp(110px, 12vw, 150px);
+  aspect-ratio: 1;
+  border-radius: 16px;
+  background: rgba(26, 54, 38, 0.45);
+  border: 1px solid rgba(245, 243, 233, 0.3);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 10px;
+}
+.sw-minimap-svg { width: 100%; height: 100%; overflow: visible; }
+.sw-minimap-outline {
+  fill: rgba(211, 217, 201, 0.08);
+  stroke: rgba(211, 217, 201, 0.5);
+  stroke-width: 1;
+}
+.sw-minimap-flightpath {
+  fill: none;
+  stroke: rgba(212, 137, 36, 0.55);
+  stroke-width: 1.1;
+  stroke-dasharray: 2 2;
+}
+.sw-minimap-hotspot { fill: rgba(245, 243, 233, 0.55); }
+.sw-minimap-drone {
+  fill: #D48924;
+  stroke: #F5F3E9;
+  stroke-width: 0.6;
+}
+
+/* ---------------------------------------------------------------- preloader */
+
+.sw-preloader {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.1rem;
+  background: #142a1d;
+}
+.sw-preloader-sprout {
+  position: relative;
+  width: 46px;
+  height: 46px;
+}
+.sw-preloader-petal {
+  position: absolute;
+  inset: 0;
+  border-radius: 60% 40% 55% 45% / 45% 55% 40% 60%;
+  border: 2px solid rgba(212, 137, 36, 0.75);
+  border-top-color: transparent;
+  animation: sw-spin 1.4s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite;
+}
+.sw-preloader-petal:nth-child(2) { animation-delay: -0.45s; opacity: 0.7; transform: scale(0.7); }
+.sw-preloader-petal:nth-child(3) { animation-delay: -0.9s; opacity: 0.45; transform: scale(0.45); }
+@keyframes sw-spin { to { transform: rotate(360deg) scale(1); } }
+
+.sw-preloader-track {
+  width: 160px;
+  height: 3px;
+  border-radius: 3px;
+  background: rgba(245, 243, 233, 0.15);
+  overflow: hidden;
+}
+.sw-preloader-fill {
+  height: 100%;
+  background: linear-gradient(to right, #D48924, #D3D9C9);
+  transition: width 0.25s ease-out;
+}
+.sw-preloader-label {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(245, 243, 233, 0.75);
+}
+
+/* ---------------------------------------------------------------- hotspot cards */
+
+.sw-card {
+  position: absolute;
+  z-index: 12;
+  width: min(340px, 84vw);
+  padding: 1.4rem 1.5rem;
+  border-radius: 22px;
+  background: rgba(245, 243, 233, 0.68);
+  border: 1px solid rgba(245, 243, 233, 0.55);
+  box-shadow: 0 18px 46px rgba(20, 30, 22, 0.28);
+  backdrop-filter: blur(18px) saturate(1.15);
+  -webkit-backdrop-filter: blur(18px) saturate(1.15);
+  color: #1A3626;
+}
+
+.sw-card-eyebrow {
+  display: block;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.64rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #8a6a2f;
+  margin-bottom: 0.5rem;
+}
+.sw-card-title {
+  font-family: "Cormorant Garamond", serif;
+  font-weight: 500;
+  font-size: 1.6rem;
+  line-height: 1.15;
+  margin: 0 0 0.6rem;
+  color: #1A3626;
+}
+.sw-card-body {
+  font-family: "Figtree", sans-serif;
+  font-weight: 300;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: rgba(26, 54, 38, 0.82);
+  margin: 0 0 1.1rem;
+}
+.sw-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.sw-btn {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 0.6rem 1.05rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  border: 1px solid transparent;
+}
+.sw-btn--primary {
+  background: #1A3626;
+  color: #F5F3E9;
+}
+.sw-btn--primary:hover { background: #2f4c3a; }
+.sw-btn--ghost {
+  background: transparent;
+  border-color: rgba(26, 54, 38, 0.35);
+  color: #1A3626;
+}
+.sw-btn--ghost:hover { background: rgba(26, 54, 38, 0.08); }
+
+/* ---------------------------------------------------------------- mobile bottom sheet */
+
+.sw-sheet-dock {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 14;
+  display: flex;
+  justify-content: center;
+  padding: 0 4vw calc(env(safe-area-inset-bottom, 0px) + 18px);
+  pointer-events: none;
+}
+.sw-card--sheet {
+  position: static;
+  width: 100%;
+  max-width: 480px;
+  border-radius: 22px 22px 18px 18px;
+  pointer-events: auto;
+}
+
+/* ---------------------------------------------------------------- reduced motion fallback */
+
+.sw-static {
+  position: relative;
+  width: 100%;
+  min-height: 90vh;
+  background: #0f1d15;
+  overflow: hidden;
+}
+.sw-static-poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.sw-static-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(15, 29, 21, 0.35), rgba(15, 29, 21, 0.92));
+}
+.sw-static-content {
+  position: relative;
+  z-index: 2;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 14vh 6vw 10vh;
+  color: #F5F3E9;
+}
+.sw-static-title {
+  font-family: "Cormorant Garamond", serif;
+  font-weight: 400;
+  font-size: clamp(2.4rem, 5vw, 4rem);
+  margin: 0.6rem 0 3rem;
+}
+.sw-static-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.4rem;
+}
+.sw-card--static {
+  position: static;
+  background: rgba(245, 243, 233, 0.92);
+}
+
+/* ---------------------------------------------------------------- responsive */
+
+@media (max-width: 860px) {
+  .sw-hud { right: 3.5vw; gap: 0.6rem; }
+  .sw-hud-rail { height: 22vh; min-height: 140px; }
+  .sw-minimap-wrap { bottom: auto; top: 4vh; left: 3.5vw; }
+  .sw-minimap { width: 84px; padding: 7px; }
+  .sw-intro { bottom: auto; top: 8vh; left: 5vw; right: 5vw; max-width: none; }
+  .sw-skip { top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 108px); right: 5vw; }
+}

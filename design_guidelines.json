@@ -1,0 +1,134 @@
+{
+  "theme_and_identity": {
+    "concept": "Humus Sapiens — Azienda Agricola",
+    "tone": "Earthy, poetic-but-rigorous, authentic, editorial, 'rigenerativo non decorativo'",
+    "archetype": "ORGANIC & EARTHY",
+    "theme_mode": "Light theme dominant (off-white paper) with dark earth/forest contrasting sections."
+  },
+  "typography": {
+    "headings": {
+      "font_family": "Cormorant Garamond, serif",
+      "weights": ["300", "400", "600"],
+      "usage": "H1 to H4. Hero heading must be massive (text-6xl+) with tight tracking. Use italics for poetic emphasis.",
+      "google_font_import": "@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&display=swap');"
+    },
+    "body": {
+      "font_family": "Figtree, sans-serif",
+      "weights": ["300", "400"],
+      "usage": "Paragraphs, functional text, descriptions.",
+      "google_font_import": "@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@300;400&display=swap');"
+    },
+    "accents_and_labels": {
+      "font_family": "IBM Plex Mono, monospace",
+      "weights": ["400"],
+      "usage": "Numbered manifesto chapters (e.g., '01.', '02.'), tiny labels, language toggle.",
+      "google_font_import": "@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&display=swap');"
+    }
+  },
+  "colors": {
+    "primary_bg": {
+      "hex": "#F5F3E9",
+      "name": "Off-White Paper",
+      "usage": "Main background for hero, about, and general sections."
+    },
+    "primary_text": {
+      "hex": "#1A3626",
+      "name": "Deep Forest Green",
+      "usage": "Headings, body text on light backgrounds. Used for the logo."
+    },
+    "secondary_bg": {
+      "hex": "#2B231D",
+      "name": "Deep Soil",
+      "usage": "Background for contrasting sections like 'R'Accolti' or footer."
+    },
+    "accent_honey": {
+      "hex": "#D48924",
+      "name": "Warm Honey / Amber",
+      "usage": "Accent color for the 'Bee Humus' section, buttons, and highlights."
+    },
+    "accent_sage": {
+      "hex": "#D3D9C9",
+      "name": "Pale Sage",
+      "usage": "Secondary background for cards or bento grids to provide subtle contrast against off-white."
+    }
+  },
+  "layouts_and_spacing": {
+    "philosophy": "Generous Spacing, The Swiss Grid but organic and asymmetrical.",
+    "spacing_scale": "Use p-8, p-12, p-24, p-32. Sections should have massive vertical padding (py-32).",
+    "bento_asymmetry": "Use Mode A (The 'Tetris' Grid). Never center everything. Use col-span-8 for main images and col-span-4 for offset text to create tension and negative space."
+  },
+  "motion_and_interactions": {
+    "smooth_scroll": "MUST use @studio-freight/lenis for smooth momentum scrolling. It gives the site a premium editorial feel.",
+    "hero_kinetic_reveal": "Wrap hero text lines in overflow-hidden containers. Use framer-motion to animate text translating from y: '100%' to y: 0 with an ease-out-cubic curve and slight stagger.",
+    "scroll_reveals": "Use framer-motion 'whileInView'. Elements should fade in and translate up slightly (y: 20 -> y: 0).",
+    "image_parallax": "Images should have scale: 1.1 inside overflow-hidden wrappers, and scale down to 1.0 or shift y-axis slightly on scroll using framer-motion useScroll.",
+    "marquee": "Use react-fast-marquee. Style: Slow, editorial ribbon. Font: Cormorant Garamond, pale sage background with forest green text."
+  },
+  "visual_enhancers": {
+    "3d_elements": "Use react-three-fiber and @react-three/drei in the Hero section. Render a subtle, slow-rotating abstract 'sprouting seed' or floating earth/pollen particles using <Float> to give an immersive atmosphere without overwhelming the text.",
+    "textures": "Apply a subtle noise/grain SVG overlay across the entire site (pointer-events-none, opacity-20) to kill digital flatness and enhance the organic paper feel.",
+    "image_treatment": "Spotlight/clipped frames. Do not use border-radius-xl everywhere; use sharp edges or perfect circles to contrast natural organic photography. Never use heavy blanket overlays on images."
+  },
+  "sections_breakdown": {
+    "Header": "Glassmorphism (backdrop-blur-md, bg-[#F5F3E9]/80) floating nav with IT/EN toggle and contact link.",
+    "Hero": "Massive kinetic text: 'HUMUS SAPIENS'. Background subtle R3F 3D particles. Organic layout.",
+    "Chi_Siamo": "Numbered manifesto chapters using IBM Plex Mono for numbers ('01. Le Radici'). Asymmetrical grid.",
+    "Agricampeggio": "Large photography section with editorial marquee running across it.",
+    "Bee_Humus": "Honey section. Background shifts to dark or uses warm honey accent. Spotlight on honeycomb image.",
+    "RAccolti": "Social farming. Earthy deep soil background (#2B231D), light text. Focus on community.",
+    "Il_Luogo": "Parallax landscape photo of Liguria mountains.",
+    "Contatti": "Static showcase (no working form). Minimalist text, large email/address. Massive footer text."
+  },
+  "image_urls": {
+    "Agricampeggio": {
+      "url": "https://images.pexels.com/photos/6474843/pexels-photo-6474843.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Expansive green field under a dramatic sunset sky (User will replace later)"
+    },
+    "Bee_Humus_1": {
+      "url": "https://images.pexels.com/photos/2260932/pexels-photo-2260932.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Beekeepers in forest"
+    },
+    "Bee_Humus_2": {
+      "url": "https://images.pexels.com/photos/28124217/pexels-photo-28124217.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Honeycomb frame detail"
+    },
+    "Il_Luogo": {
+      "url": "https://images.pexels.com/photos/19680148/pexels-photo-19680148.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Liguria mountains and village (Val Petronio context)"
+    }
+  },
+  "libraries_to_install": [
+    "framer-motion",
+    "@studio-freight/lenis",
+    "react-fast-marquee",
+    "three",
+    "@react-three/fiber",
+    "@react-three/drei",
+    "lucide-react"
+  ],
+  "accessibility": {
+    "contrast": "Ensure Forest Green text against Off-White paper meets APCA/WCAG standards.",
+    "data_testid": "ALL interactive elements (buttons, links, language toggles, nav items) MUST include a 'data-testid' attribute using kebab-case.",
+    "motion": "Respect prefers-reduced-motion for parallax and kinetic reveals."
+  },
+  "instructions_to_main_agent": [
+    "Do not use generic Shadcn components for the layout; build custom asymmetrical pure HTML+Tailwind sections.",
+    "Implement Lenis for smooth scrolling in the main App wrapper.",
+    "For the Hero, use Framer Motion to reveal text line-by-line (y: 100% to 0) inside overflow-hidden wrappers.",
+    "Embed a simple Canvas from @react-three/fiber in the hero background with floating particles or an abstract shape.",
+    "Add a global SVG noise filter overlay to give the site a tactile, printed editorial feel.",
+    "The Contacts section should be a static showcase of info, no functional form is needed.",
+    "Incorporate a language toggle (IT/EN) in the header navigation.",
+    "Make the scrolling marquee for Agricampeggio organic and elegant, not like a cheap news ticker."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "Avoid the 'AI slop' aesthetic: no generic centered layouts, simplistic gradients, or uniform styling.",
+    "Use glass-morphism effects carefully; no muddy gray transparency, ensure high color saturation and 1px borders.",
+    "NEVER use AI assistant emojis for icons.",
+    "Every interaction needs micro-animations (hover states, transitions).",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "DO NOT use complete transparent background in header; use glassmorphism.",
+    "You MUST NOT apply universal transition (transition: all)."
+  ]
+}
