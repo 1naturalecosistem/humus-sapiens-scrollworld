@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/humus-sapiens-scrollworld/static/css/main.1c5024e5.css",
+    "main.js": "/humus-sapiens-scrollworld/static/js/main.6820b4a5.js",
+    "index.html": "/humus-sapiens-scrollworld/index.html",
+    "main.1c5024e5.css.map": "/humus-sapiens-scrollworld/static/css/main.1c5024e5.css.map",
+    "main.6820b4a5.js.map": "/humus-sapiens-scrollworld/static/js/main.6820b4a5.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.1c5024e5.css",
+    "static/js/main.6820b4a5.js"
+  ]
+}
