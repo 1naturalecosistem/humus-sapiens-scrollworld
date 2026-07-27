@@ -138,7 +138,7 @@ export const HUMUS_SCROLL_WORLD = {
       pos: { x: "56%", y: "40%" },
       target: "shop",
       it: {
-        eyebrow: "04 · Orto & Permacultura",
+        eyebrow: "03 · Orto & Permacultura",
         title: "Coltivare imitando il bosco",
         body:
           "Ortaggi, frutti e piante officinali crescono in policoltura, senza chimica: il suolo si rigenera e diventa raccolto.",
@@ -146,7 +146,7 @@ export const HUMUS_SCROLL_WORLD = {
         ctaSecondary: "Scopri di più",
       },
       en: {
-        eyebrow: "04 · Garden & Permaculture",
+        eyebrow: "03 · Garden & Permaculture",
         title: "Farming like a forest",
         body:
           "Vegetables, fruit and medicinal plants grow in polyculture, chemical-free: the soil regenerates and becomes harvest.",
@@ -161,7 +161,7 @@ export const HUMUS_SCROLL_WORLD = {
       pos: { x: "7%", y: "18%" },
       target: "il-luogo",
       it: {
-        eyebrow: "05 · Il Bosco",
+        eyebrow: "04 · Il Bosco",
         title: "ZSC Alta Val Petronio",
         body:
           "Il volo attraversa la Zona Speciale di Conservazione: corridoi ecologici, biodiversità, acqua. Qui si misura la rigenerazione.",
@@ -169,7 +169,7 @@ export const HUMUS_SCROLL_WORLD = {
         ctaSecondary: "Scopri di più",
       },
       en: {
-        eyebrow: "05 · The Forest",
+        eyebrow: "04 · The Forest",
         title: "Natura 2000 · Alta Val Petronio",
         body:
           "The flight crosses the Special Area of Conservation: ecological corridors, biodiversity, water. Regeneration is measured here.",
@@ -184,7 +184,7 @@ export const HUMUS_SCROLL_WORLD = {
       pos: { x: "50%", y: "22%" },
       target: "contatti",
       it: {
-        eyebrow: "06 · Il Tramonto",
+        eyebrow: "05 · Il Tramonto",
         title: "Resta a guardarlo da qui",
         body:
           "La luce scende sul crinale e la valle rallenta. Il posto migliore per vederlo non è uno schermo: è la terrazza del casale.",
@@ -192,7 +192,7 @@ export const HUMUS_SCROLL_WORLD = {
         ctaSecondary: "Contattaci",
       },
       en: {
-        eyebrow: "06 · The Sunset",
+        eyebrow: "05 · The Sunset",
         title: "Stay and watch it from here",
         body:
           "Light falls on the ridge and the valley slows down. The best place to watch it is not a screen: it is the farmhouse terrace.",
@@ -205,7 +205,7 @@ export const HUMUS_SCROLL_WORLD = {
   // fixed UI strings
   ui: {
     it: {
-      eyebrow: "Il volo del drone · Alta Val di Vara",
+      eyebrow: "Il volo del drone · Alta Val Petronio",
       title: "Esplora il Territorio",
       hint: "Scorri per volare",
       skip: "Salta l'animazione",
@@ -214,7 +214,7 @@ export const HUMUS_SCROLL_WORLD = {
       map: "Mappa del volo",
     },
     en: {
-      eyebrow: "The drone flight · Alta Val di Vara",
+      eyebrow: "The drone flight · Alta Val Petronio",
       title: "Explore the Land",
       hint: "Scroll to fly",
       skip: "Skip the flight",
