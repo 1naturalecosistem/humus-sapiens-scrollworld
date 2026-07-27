@@ -2,67 +2,122 @@
 // HUMUS SAPIENS — Scroll World configuration
 // ----------------------------------------------------------------------------
 // Single source of truth for the drone-flight scroll module:
-// frame sequence, hotspots (position + copy IT/EN), minimap, altitude profile.
+// flight video, scroll time-warp, hotspots (position + copy IT/EN), minimap,
+// altitude profile.
 //
-// FRAME SWAP (Gemini / Higgsfield render):
-// drop the new sequence into public/assets/frames/<set>/ keeping the naming
-// `humus_frame_0001.webp … humus_frame_NNNN.webp`, then update `frames.count`.
-// Current sequence: real drone footage, ungraded. 240 frames across a 45.1s
-// flight cut to follow the hotspot narrative:
-//   arrival over the farm      0.MP4 37.0-44.9s
-//   the two guest houses       1.MP4  5.0-18.0s
-//   terraces and garden        2.MP4  2.0-13.0s
-//   forest and the clearing    2.MP4 21.0-29.5s
-//   the ridge at sunset        2.MP4 74.0-81.9s
-// Joined with 0.8s crossfades so the flight reads as one continuous move.
+// WHY A VIDEO AND NOT A FRAME SEQUENCE
+// The flight used to be 240 WebP stills at 1600x900. That is only ~4 frames per
+// second of real motion, so every painted frame jumped ~190ms of world — which
+// reads as stepping, and the cross-dissolve that hid the stepping turned every
+// moving frame into a double image. Hence "blurry, low-res, too fast".
+// A frame sequence cannot fix that: this footage costs ~150-450 KB per frame at
+// a decent quality, so 24fps over a 56s flight would be well past a gigabyte.
+// Inter-frame video compression is 20-40x more efficient on exactly this kind of
+// content, so the flight now ships as H.264 and is scrubbed by setting
+// `currentTime`. Same bytes, six times the temporal resolution, no ghosting.
 //
-// Why 45s and not the full 90s of footage: how steppy the scrub feels is set
-// by how much world motion each painted frame advances, i.e. by the ratio of
-// footage seconds to scroll distance — not by the frame count. Halving the
-// footage and lengthening `scrollLengthVh` is what makes it glide; adding
-// frames past what the scroll can traverse only adds weight.
+// REBUILDING THE FLIGHT
+// `../../../../../Volo Drone scrolldown/_build/` holds the pipeline:
+//   build_master.sh    recut + grade the master from the original 2720x1530 MP4s
+//   measure_warp.py    re-measure the motion profile and print `timeWarp` below
+//   encode_delivery.sh encode the web variants + posters
+// Copy the results into public/assets/flight/ and paste the new `timeWarp`.
 // ============================================================================
 
+const BASE = `${process.env.PUBLIC_URL}/assets/flight`;
+
 export const HUMUS_SCROLL_WORLD = {
-  frames: {
-    basePath: `${process.env.PUBLIC_URL}/assets/frames`,
-    prefix: "humus_frame_",
-    ext: "webp",
-    pad: 4,          // humus_frame_0001
-    firstIndex: 1,
-    count: 240,
-    // resolution sets: key -> subfolder. Picked at runtime (viewport + network).
-    sets: {
-      desktop: "1600",
-      mobile: "720",
+  flight: {
+    // Real drone footage, recut to the hotspot story as one continuous move:
+    //   arrival over the farm       0.MP4 37.5-44.9s
+    //   the two guest houses        1.MP4  4.0-13.0s
+    //   terraces, garden, serra     2.MP4  2.0-8.5s
+    //   the forest and the clearing 2.MP4 26.0-32.0s
+    //   the farm at golden hour     2.MP4 65.0-71.0s
+    //   out to the ridge and sunset 2.MP4 77.0-81.4s
+    // joined with 0.7s crossfades. 35.8s at 24fps.
+    duration: 35.8,
+
+    // Resolution ladder, picked at runtime from viewport + dpr + network.
+    // Only one is ever fetched.
+    //
+    // `mobilePortrait` is a 9:16 centre crop, not just a smaller landscape file.
+    // The flight fills the viewport with object-fit: cover, and a 16:9 video
+    // covering a 9:19.5 phone screen gets scaled up ~4.7x vertically — measured,
+    // and visibly mushy. Cropping to portrait first covers the same box at ~1.8x
+    // for a third of the pixels a landscape file would need to match it.
+    variants: {
+      hidpi: `${BASE}/flight-hidpi.mp4`,
+      desktop: `${BASE}/flight-desktop.mp4`,
+      mobile: `${BASE}/flight-mobile.mp4`,
+      mobilePortrait: `${BASE}/flight-mobile-portrait.mp4`,
     },
-    // pixel width of the files in `sets.desktop` — the canvas never allocates
-    // a backing store wider than this, there would be no detail to show in it
-    sourceWidth: 1600,
-    // phase-1 preload loads every Nth frame, the rest streams in background
-    preloadStride: 4,
-    // on slow connections (2g/3g/saveData) the stride widens and mobile set is forced
-    slowStride: 8,
-    // parallel requests used to backfill the remaining frames
-    concurrency: 8,
+    // device-pixel width above which the hi-dpi ladder step is worth its bytes
+    hidpiMinWidth: 2000,
+    // viewport aspect (w/h) below which the portrait crop wins
+    portraitMaxAspect: 0.85,
+
+    poster: `${BASE}/flight-first.jpg`,
+    posterPortrait: `${BASE}/flight-first-portrait.jpg`,
+    // the sunset finale, used by the reduced-motion fallback
+    posterStatic: `${BASE}/flight-poster.jpg`,
+
+    // How hard the painted time chases the scroll position, as a time constant
+    // in seconds. This is what makes the flight feel unhurried rather than
+    // nailed to the wheel: the camera eases toward where you scrolled instead of
+    // snapping to it. Larger = more float, but also more lag.
+    followTau: 0.16,
+
+    // Don't bother re-seeking for less than half a frame of movement.
+    minSeekStep: 1 / 48,
+
+    // Buffered fraction required before the flight is handed over to the
+    // scroll. The scrub is clamped to the buffered range anyway, so this only
+    // needs to be enough that the opening beats play without waiting.
+    minBufferRatio: 0.12,
   },
 
-  // total scroll distance of the flight, in viewport-heights (~8 screens).
-  // Spreads 45s of footage over more pixels => less motion per painted frame.
+  // ---------------------------------------------------------------------------
+  // SCROLL TIME-WARP
+  // Evenly spaced samples of scroll progress (0 -> 1) mapped to video seconds.
+  // The raw footage is wildly uneven: the drift over the two houses moves the
+  // world ~1 unit per frame, the run over the terraces ~23. Mapping scroll
+  // linearly onto video time therefore made some beats crawl and others rocket
+  // past — the "too fast" complaint. This table spends more scroll distance
+  // where the world moves fast and less where it barely moves, so the flight
+  // holds one calm pace throughout.
+  // Regenerate with `measure_warp.py` (gamma 0.4 = partial equalisation).
+  // ---------------------------------------------------------------------------
+  timeWarp: [
+    0.000, 0.598, 1.172, 1.729, 2.329, 3.190, 3.924, 4.552,
+    5.159, 5.735, 6.352, 6.965, 7.601, 8.556, 9.537, 10.459,
+    11.049, 11.570, 12.180, 12.873, 13.572, 14.378, 15.053, 15.530,
+    16.017, 16.523, 17.002, 17.461, 17.909, 18.350, 18.789, 19.233,
+    19.667, 20.056, 20.416, 20.778, 21.162, 21.611, 22.168, 22.722,
+    23.233, 23.717, 24.182, 24.624, 25.045, 25.455, 25.860, 26.267,
+    26.708, 27.217, 27.747, 28.267, 28.790, 29.318, 29.847, 30.362,
+    30.847, 31.314, 31.791, 32.419, 33.220, 33.785, 34.320, 34.900,
+    35.800,
+  ],
+
+  // Total scroll distance of the flight, in viewport-heights.
+  // 35.8s of flight over 8 screens: ~240px of scroll per second of flight on a
+  // 1080p window, half again as much as the old cut, and the time-warp holds
+  // that rate steady instead of letting the terrace run eat it in one gulp.
   scrollLengthVh: 800,
 
   // section that "Salta l'animazione" jumps to
   skipTargetId: "chi-siamo",
 
   // Drone height above ground during the flight (m AGL), as [progress%, meters].
-  // [Inferenza] estimated profile of the joined flight — edit freely, it is display-only.
+  // [Inferenza] estimated profile of the joined flight — display-only.
   altitudeProfile: [
-    [0, 64],
-    [8, 72],
-    [36, 46],
-    [51, 30],
-    [78, 58],
-    [93, 86],
+    [0, 62],
+    [7, 70],
+    [24, 56],
+    [44, 34],
+    [65, 48],
+    [88, 74],
     [100, 92],
   ],
 
@@ -79,7 +134,9 @@ export const HUMUS_SCROLL_WORLD = {
 
   // --------------------------------------------------------------------------
   // HOTSPOTS — the key points of the ecosystem along the flight.
-  //   at:    progress % at which the card appears
+  //   at:    progress % at which the card appears. Derived from the video time
+  //          the beat is on screen, run through the time-warp above — so if the
+  //          warp is regenerated, re-read these from `measure_warp.py` output.
   //   dwell: half-window in % during which it stays visible (at ± dwell)
   //   pos:   card anchor on desktop (percent of the canvas)
   //   target: section id the CTA scrolls to
@@ -87,7 +144,7 @@ export const HUMUS_SCROLL_WORLD = {
   hotspots: [
     {
       id: "arrivo",
-      at: 8,
+      at: 6.6, // video 2.5s — the farm framed from the air
       dwell: 6,
       pos: { x: "7%", y: "16%" },
       target: "il-luogo",
@@ -110,8 +167,8 @@ export const HUMUS_SCROLL_WORLD = {
     },
     {
       id: "ospitalita",
-      at: 36,
-      dwell: 6,
+      at: 23.5, // video 10.5s — both guest houses in frame
+      dwell: 6.5,
       pos: { x: "55%", y: "14%" },
       target: "agricampeggio",
       it: {
@@ -133,8 +190,8 @@ export const HUMUS_SCROLL_WORLD = {
     },
     {
       id: "permacultura",
-      at: 51,
-      dwell: 6,
+      at: 44.1, // video 18.0s — terraces, garden beds and the greenhouse
+      dwell: 6.5,
       pos: { x: "56%", y: "40%" },
       target: "shop",
       it: {
@@ -156,8 +213,8 @@ export const HUMUS_SCROLL_WORLD = {
     },
     {
       id: "bosco",
-      at: 78,
-      dwell: 6,
+      at: 65.0, // video 24.0s — over the chestnut woods above the farm
+      dwell: 8,
       pos: { x: "7%", y: "18%" },
       target: "il-luogo",
       it: {
@@ -179,7 +236,9 @@ export const HUMUS_SCROLL_WORLD = {
     },
     {
       id: "tramonto",
-      at: 93,
+      // Kept tight to the end so the card lands on the sunset itself (video
+      // 33-35.8s) rather than opening over the golden-hour pass before it.
+      at: 95,
       dwell: 7,
       pos: { x: "50%", y: "22%" },
       target: "contatti",
@@ -225,9 +284,17 @@ export const HUMUS_SCROLL_WORLD = {
   },
 };
 
-// path helper: frameSrc("1600", 12) -> /assets/frames/1600/humus_frame_0012.webp
-export function frameSrc(setDir, i, f = HUMUS_SCROLL_WORLD.frames) {
-  return `${f.basePath}/${setDir}/${f.prefix}${String(i).padStart(f.pad, "0")}.${f.ext}`;
+// Map scroll progress (0–1) to a time in the flight, through the time-warp
+// table. Linear interpolation between samples is plenty: the table is dense
+// enough that the curve is already smooth at this scale.
+export function flightTimeAt(progress, cfg = HUMUS_SCROLL_WORLD) {
+  const table = cfg.timeWarp;
+  const last = table.length - 1;
+  const p = progress <= 0 ? 0 : progress >= 1 ? 1 : progress;
+  const x = p * last;
+  const i = Math.min(last - 1, Math.floor(x));
+  const f = x - i;
+  return table[i] + (table[i + 1] - table[i]) * f;
 }
 
 // piecewise-linear altitude lookup for the HUD

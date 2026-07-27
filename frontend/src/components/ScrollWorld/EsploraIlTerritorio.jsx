@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useScroll } from "framer-motion";
 import { useLang } from "../../lib/i18n";
 import { scrollToId } from "../SmoothScroll";
-import { HUMUS_SCROLL_WORLD, altitudeAt, frameSrc } from "./humus-config";
-import { useFrameSequence } from "./useFrameSequence";
+import { HUMUS_SCROLL_WORLD, altitudeAt, flightTimeAt } from "./humus-config";
+import { useFlightVideo } from "./useFlightVideo";
 import HotspotCard from "./HotspotCard";
 import MiniMap from "./MiniMap";
 import "./scroll-world.css";
@@ -26,13 +26,11 @@ export default function EsploraIlTerritorio() {
   const ui = CONFIG.ui[lang];
 
   const sectionRef = useRef(null);
-  const canvasRef = useRef(null);
-  const wrapRef = useRef(null);
 
   const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   const isMobile = useMediaQuery("(max-width: 860px), (pointer: coarse)");
 
-  const { imagesRef, total, firstPassReady, loadRatio, setPriority } = useFrameSequence();
+  const { videoRef, src, poster, ready, loadRatio, failed, follow, snap } = useFlightVideo();
 
   const { scrollYProgress } = useScroll({
     target: sectionRef,
@@ -41,144 +39,48 @@ export default function EsploraIlTerritorio() {
 
   const progressRef = useRef(0);
   const [progressPct, setProgressPct] = useState(0);
-  const [showSection, setShowSection] = useState(false);
+  const [inView, setInView] = useState(false);
 
-  // ---- Canvas draw (imperative, runs every scroll tick — no React re-render) ----
-  const lastKeyRef = useRef("");
-
-  // nearest already-loaded frame to `idx`, so the canvas never flashes blank
-  // while the background pass is still catching up
-  const nearestLoaded = (idx) => {
-    const imgs = imagesRef.current;
-    if (imgs[idx]) return imgs[idx];
-    for (let r = 1; r < total; r++) {
-      if (imgs[idx - r]) return imgs[idx - r];
-      if (imgs[idx + r]) return imgs[idx + r];
-    }
-    return null;
-  };
-
-  const blit = (ctx, img, cw, ch) => {
-    const ir = img.naturalWidth / img.naturalHeight;
-    const cr = cw / ch;
-    let sw, sh, sx, sy;
-    if (ir > cr) {
-      sh = img.naturalHeight;
-      sw = sh * cr;
-      sx = (img.naturalWidth - sw) / 2;
-      sy = 0;
-    } else {
-      sw = img.naturalWidth;
-      sh = sw / cr;
-      sx = 0;
-      sy = (img.naturalHeight - sh) / 2;
-    }
-    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
-  };
-
-  const drawAt = (progress) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-
-    // Exact (fractional) position in the sequence. The sampled flight is only
-    // ~5 frames per second of real motion, so snapping to the nearest frame
-    // reads as stepping; cross-dissolving into the next one turns those steps
-    // into continuous movement.
-    const exact = Math.min(total - 1, Math.max(0, progress * (total - 1)));
-    const base = Math.floor(exact);
-    const frac = exact - base;
-    setPriority(base);
-
-    // quantised so imperceptible sub-steps don't trigger a repaint
-    const key = `${base}:${Math.round(frac * 8)}`;
-    if (key === lastKeyRef.current) return;
-    lastKeyRef.current = key;
-
-    const next = base + 1 < total ? imagesRef.current[base + 1] : null;
-    const cw = canvas.width;
-    const ch = canvas.height;
-
-    // close enough to a whole frame: one blit, no blend
-    if (next && frac > 0.98) {
-      blit(ctx, next, cw, ch);
-      return;
-    }
-    const imgA = nearestLoaded(base);
-    if (!imgA) return;
-    blit(ctx, imgA, cw, ch);
-    if (next && frac > 0.02) {
-      ctx.globalAlpha = frac;
-      blit(ctx, next, cw, ch);
-      ctx.globalAlpha = 1;
-    }
-  };
-
-  // canvas sizing (device-pixel-ratio aware) + redraw on resize
+  // ---- scrub loop ---------------------------------------------------------
+  // One rAF loop drives the flight while the section is on screen. framer-motion
+  // emits many progress events per displayed frame (Lenis interpolates), so the
+  // loop reads the latest value rather than reacting to each event.
   useEffect(() => {
-    const canvas = canvasRef.current;
-    const wrap = wrapRef.current;
-    if (!canvas || !wrap) return;
-    const resize = () => {
-      const rect = wrap.getBoundingClientRect();
-      // Never allocate a backing store wider than the source frames: past that
-      // point every blit costs more pixels without adding any detail, and on a
-      // retina screen the naive dpr*css size is 4x the work for nothing.
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const maxW = CONFIG.frames.sourceWidth;
-      const scale = Math.min(dpr, Math.max(1, maxW / Math.max(1, rect.width)));
-      canvas.width = Math.round(rect.width * scale);
-      canvas.height = Math.round(rect.height * scale);
-      lastKeyRef.current = ""; // backing store was cleared by the resize
-      drawAt(progressRef.current);
-    };
-    resize();
-    const ro = new ResizeObserver(resize);
-    ro.observe(wrap);
-    return () => ro.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [total]);
-
-  // redraw as soon as more frames land (first pass fills in / backfill pass)
-  useEffect(() => {
-    lastKeyRef.current = ""; // a better frame may now exist for this position
-    drawAt(progressRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadRatio]);
-
-  // Smooth scrolling emits many progress updates per displayed frame. Painting
-  // on each one costs several blits the screen never shows, so coalesce them
-  // into a single draw per animation frame.
-  useEffect(() => {
-    let raf = 0;
-    const paint = () => {
-      raf = 0;
-      drawAt(progressRef.current);
-    };
     const unsubscribe = scrollYProgress.on("change", (v) => {
       progressRef.current = v;
-      if (!raf) raf = requestAnimationFrame(paint);
     });
-    return () => {
-      unsubscribe();
-      if (raf) cancelAnimationFrame(raf);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scrollYProgress, total]);
+    return unsubscribe;
+  }, [scrollYProgress]);
 
-  // throttled React-state mirror of progress, only while the section is
-  // actually in view — drives the HUD / hotspots / minimap without forcing
-  // a re-render on every sub-pixel scroll tick.
   useEffect(() => {
-    const io = new IntersectionObserver(([entry]) => setShowSection(entry.isIntersecting), {
+    if (!inView || reducedMotion) return;
+    let raf = 0;
+    const tick = (now) => {
+      follow(flightTimeAt(progressRef.current), now);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [inView, reducedMotion, follow]);
+
+  // Land on the right frame when the section first becomes seekable, and when
+  // the visitor scrolls back into it after being away.
+  useEffect(() => {
+    if (ready) snap(flightTimeAt(progressRef.current));
+  }, [ready, snap]);
+
+  useEffect(() => {
+    const io = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), {
       threshold: 0,
     });
     if (sectionRef.current) io.observe(sectionRef.current);
     return () => io.disconnect();
   }, []);
 
+  // Throttled React-state mirror of progress, only while the section is in view:
+  // drives the HUD / hotspots / minimap without a re-render per scroll tick.
   useEffect(() => {
-    if (!showSection || reducedMotion) return;
+    if (!inView || reducedMotion) return;
     let raf;
     let last = -1;
     const tick = () => {
@@ -191,7 +93,7 @@ export default function EsploraIlTerritorio() {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [showSection, reducedMotion]);
+  }, [inView, reducedMotion]);
 
   const altitude = useMemo(() => altitudeAt(progressPct), [progressPct]);
 
@@ -206,16 +108,19 @@ export default function EsploraIlTerritorio() {
 
   const activeMobile = visibleHotspots[0]?.h ?? null;
 
-  const posterSrc = frameSrc(CONFIG.frames.sets.desktop, CONFIG.frames.firstIndex, CONFIG.frames);
-
   // ---------------------------------------------------------------------
-  // Reduced-motion fallback: no canvas scrubbing, no pin — a normal static
-  // section with the poster frame and every hotspot as a plain content card.
+  // Static fallback: reduced-motion, or the video failed to load at all.
+  // A normal section with the poster frame and every hotspot as a plain card.
   // ---------------------------------------------------------------------
-  if (reducedMotion) {
+  if (reducedMotion || failed) {
     return (
       <section id="esplora-il-territorio" className="sw-static" data-testid="scrollworld-static">
-        <img src={posterSrc} alt="" className="sw-static-poster" loading="lazy" />
+        <img
+          src={CONFIG.flight.posterStatic}
+          alt=""
+          className="sw-static-poster"
+          loading="lazy"
+        />
         <div className="sw-static-overlay" />
         <div className="sw-static-content">
           <span className="sw-eyebrow">{ui.eyebrow}</span>
@@ -252,13 +157,28 @@ export default function EsploraIlTerritorio() {
       className="sw-section"
       style={{ height: `${CONFIG.scrollLengthVh}vh` }}
     >
-      <div ref={wrapRef} className="sw-sticky">
-        <canvas ref={canvasRef} className="sw-canvas" aria-hidden="true" />
+      <div className="sw-sticky">
+        {/* The flight itself. Painted straight to the element rather than blitted
+            through a canvas: the browser scales it on the compositor, so it stays
+            at full resolution and costs nothing per frame. */}
+        <video
+          ref={videoRef}
+          className="sw-video"
+          data-testid="scrollworld-video"
+          src={src}
+          poster={poster}
+          preload="auto"
+          muted
+          playsInline
+          disablePictureInPicture
+          aria-hidden="true"
+          tabIndex={-1}
+        />
         <div className="sw-vignette" aria-hidden="true" />
 
         {/* Preloader */}
         <AnimatePresence>
-          {!firstPassReady && (
+          {!ready && (
             <motion.div
               className="sw-preloader"
               initial={{ opacity: 1 }}

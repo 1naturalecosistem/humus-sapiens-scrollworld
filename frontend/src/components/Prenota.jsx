@@ -1,22 +1,35 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useLang } from "../lib/i18n";
 import { CONTENT } from "../lib/content";
 import { Reveal, RevealWords } from "./Reveal";
 
-const WIDGET_SRC = "https://widget.holiduhost.com/widget/be6529bd-1f7a-4029-86d1-6a1e882b7e15";
+const WIDGET_ORIGIN = "https://widget.holiduhost.com";
+const WIDGET_SRC = `${WIDGET_ORIGIN}/widget/be6529bd-1f7a-4029-86d1-6a1e882b7e15`;
+
+// The widget lays out to whatever height its content needs — ~2700px on desktop
+// with the search form plus the property list — and reports that to the parent.
+// Until the first report lands we show a box tall enough for the search form and
+// the first results rather than clipping it to a few hundred pixels.
+const INITIAL_HEIGHT = 1500;
+const MIN_HEIGHT = 620;
 
 export default function Prenota() {
   const { lang } = useLang();
   const t = CONTENT[lang].prenota;
-  const frame = useRef(null);
 
-  // The widget posts its content height as it changes (date picker opening,
-  // results loading); without this the iframe would clip or leave dead space.
+  // Height has to live in React state, not be poked onto the DOM node. The old
+  // version assigned `frame.current.style.height` from the message handler while
+  // the element also carried `height: 500` in its style prop, so every re-render
+  // (a language toggle is enough) snapped the widget back to 500px and cut it off.
+  const [height, setHeight] = useState(INITIAL_HEIGHT);
+
   useEffect(() => {
     function onMessage(event) {
-      if (event.data?.type === "resize" && frame.current) {
-        frame.current.style.height = `${event.data.height}px`;
-      }
+      if (event.origin !== WIDGET_ORIGIN) return;
+      const data = event.data;
+      if (!data || data.type !== "resize") return;
+      const h = Number(data.height);
+      if (Number.isFinite(h) && h > MIN_HEIGHT) setHeight(Math.ceil(h));
     }
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
@@ -39,13 +52,16 @@ export default function Prenota() {
         <Reveal y={24}>
           <div className="border border-[#1A3626]/15 bg-white/40 p-2 md:p-4">
             <iframe
-              ref={frame}
               title={t.iframeTitle}
               src={WIDGET_SRC}
               data-testid="booking-widget"
-              className="w-full block"
-              style={{ aspectRatio: "1280 / 1000", minHeight: 500, height: 500, border: "none" }}
+              className="w-full block border-0"
+              style={{ height, minHeight: MIN_HEIGHT }}
+              /* scrolling stays on so the widget is still usable if the resize
+                 message never lands (blocked postMessage, older browser) */
+              scrolling="auto"
               loading="lazy"
+              referrerPolicy="strict-origin-when-cross-origin"
             />
           </div>
           <p className="mt-5 font-mono-label text-[10px] tracking-label text-[#1A3626]/50">{t.note}</p>
