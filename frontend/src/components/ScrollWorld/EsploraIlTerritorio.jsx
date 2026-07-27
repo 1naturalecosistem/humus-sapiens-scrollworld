@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "framer-motion";
+import { AnimatePresence, motion, useScroll } from "framer-motion";
 import { useLang } from "../../lib/i18n";
 import { scrollToId } from "../SmoothScroll";
 import { HUMUS_SCROLL_WORLD, altitudeAt, frameSrc } from "./humus-config";
@@ -32,7 +32,7 @@ export default function EsploraIlTerritorio() {
   const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   const isMobile = useMediaQuery("(max-width: 860px), (pointer: coarse)");
 
-  const { imagesRef, total, firstPassReady, loadRatio } = useFrameSequence();
+  const { imagesRef, total, firstPassReady, loadRatio, setPriority } = useFrameSequence();
 
   const { scrollYProgress } = useScroll({
     target: sectionRef,
@@ -44,24 +44,21 @@ export default function EsploraIlTerritorio() {
   const [showSection, setShowSection] = useState(false);
 
   // ---- Canvas draw (imperative, runs every scroll tick — no React re-render) ----
-  const drawAt = (progress) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    const idx = Math.min(total - 1, Math.max(0, Math.round(progress * (total - 1))));
+  const lastKeyRef = useRef("");
 
-    let img = imagesRef.current[idx];
-    if (!img) {
-      // frame not loaded yet: use nearest already-loaded neighbour so the
-      // canvas never flashes blank while the background pass catches up.
-      for (let r = 1; r < total && !img; r++) {
-        img = imagesRef.current[idx - r] || imagesRef.current[idx + r];
-      }
+  // nearest already-loaded frame to `idx`, so the canvas never flashes blank
+  // while the background pass is still catching up
+  const nearestLoaded = (idx) => {
+    const imgs = imagesRef.current;
+    if (imgs[idx]) return imgs[idx];
+    for (let r = 1; r < total; r++) {
+      if (imgs[idx - r]) return imgs[idx - r];
+      if (imgs[idx + r]) return imgs[idx + r];
     }
-    if (!img) return;
+    return null;
+  };
 
-    const cw = canvas.width;
-    const ch = canvas.height;
+  const blit = (ctx, img, cw, ch) => {
     const ir = img.naturalWidth / img.naturalHeight;
     const cr = cw / ch;
     let sw, sh, sx, sy;
@@ -79,6 +76,44 @@ export default function EsploraIlTerritorio() {
     ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
   };
 
+  const drawAt = (progress) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+
+    // Exact (fractional) position in the sequence. The sampled flight is only
+    // ~5 frames per second of real motion, so snapping to the nearest frame
+    // reads as stepping; cross-dissolving into the next one turns those steps
+    // into continuous movement.
+    const exact = Math.min(total - 1, Math.max(0, progress * (total - 1)));
+    const base = Math.floor(exact);
+    const frac = exact - base;
+    setPriority(base);
+
+    // quantised so imperceptible sub-steps don't trigger a repaint
+    const key = `${base}:${Math.round(frac * 8)}`;
+    if (key === lastKeyRef.current) return;
+    lastKeyRef.current = key;
+
+    const next = base + 1 < total ? imagesRef.current[base + 1] : null;
+    const cw = canvas.width;
+    const ch = canvas.height;
+
+    // close enough to a whole frame: one blit, no blend
+    if (next && frac > 0.98) {
+      blit(ctx, next, cw, ch);
+      return;
+    }
+    const imgA = nearestLoaded(base);
+    if (!imgA) return;
+    blit(ctx, imgA, cw, ch);
+    if (next && frac > 0.02) {
+      ctx.globalAlpha = frac;
+      blit(ctx, next, cw, ch);
+      ctx.globalAlpha = 1;
+    }
+  };
+
   // canvas sizing (device-pixel-ratio aware) + redraw on resize
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -86,9 +121,15 @@ export default function EsploraIlTerritorio() {
     if (!canvas || !wrap) return;
     const resize = () => {
       const rect = wrap.getBoundingClientRect();
+      // Never allocate a backing store wider than the source frames: past that
+      // point every blit costs more pixels without adding any detail, and on a
+      // retina screen the naive dpr*css size is 4x the work for nothing.
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = Math.round(rect.width * dpr);
-      canvas.height = Math.round(rect.height * dpr);
+      const maxW = CONFIG.frames.sourceWidth;
+      const scale = Math.min(dpr, Math.max(1, maxW / Math.max(1, rect.width)));
+      canvas.width = Math.round(rect.width * scale);
+      canvas.height = Math.round(rect.height * scale);
+      lastKeyRef.current = ""; // backing store was cleared by the resize
       drawAt(progressRef.current);
     };
     resize();
@@ -100,14 +141,30 @@ export default function EsploraIlTerritorio() {
 
   // redraw as soon as more frames land (first pass fills in / backfill pass)
   useEffect(() => {
+    lastKeyRef.current = ""; // a better frame may now exist for this position
     drawAt(progressRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadRatio]);
 
-  useMotionValueEvent(scrollYProgress, "change", (v) => {
-    progressRef.current = v;
-    drawAt(v);
-  });
+  // Smooth scrolling emits many progress updates per displayed frame. Painting
+  // on each one costs several blits the screen never shows, so coalesce them
+  // into a single draw per animation frame.
+  useEffect(() => {
+    let raf = 0;
+    const paint = () => {
+      raf = 0;
+      drawAt(progressRef.current);
+    };
+    const unsubscribe = scrollYProgress.on("change", (v) => {
+      progressRef.current = v;
+      if (!raf) raf = requestAnimationFrame(paint);
+    });
+    return () => {
+      unsubscribe();
+      if (raf) cancelAnimationFrame(raf);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scrollYProgress, total]);
 
   // throttled React-state mirror of progress, only while the section is
   // actually in view — drives the HUD / hotspots / minimap without forcing

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { HUMUS_SCROLL_WORLD, frameSrc } from "./humus-config";
 
 // Picks the frame resolution set + preload stride based on viewport and
@@ -12,24 +12,37 @@ function pickQuality() {
   return {
     set: slow || coarse || narrow ? f.sets.mobile : f.sets.desktop,
     stride: slow ? f.slowStride : f.preloadStride,
+    concurrency: slow ? 3 : f.concurrency,
   };
 }
 
 // Loads the drone-flight frame sequence progressively:
 // pass 1 loads every Nth frame (fast, gives a scrubbable-but-coarse sequence),
-// pass 2 backfills the rest in idle time. Returns live refs the canvas reads
-// on every scroll tick, plus a 0-1 loading ratio for the preloader UI.
+// pass 2 backfills the rest nearest-to-the-viewer first.
+//
+// The backfill deliberately does NOT wait for idle time: it is exactly while
+// the visitor is scrolling that the missing frames are needed, and that is
+// precisely when the main thread is never idle. Gating it on idle callbacks
+// starves the very frames being scrubbed through, which reads as the canvas
+// freezing on one image and then jumping several frames at once.
 export function useFrameSequence() {
   const f = HUMUS_SCROLL_WORLD.frames;
   const total = f.count;
   const imagesRef = useRef(new Array(total).fill(null));
+  const priorityRef = useRef(0);
   const [firstPassReady, setFirstPassReady] = useState(false);
   const [loadRatio, setLoadRatio] = useState(0);
 
+  // The canvas tells the loader which frame the viewer is on, so the backfill
+  // always works outwards from where the flight actually is.
+  const setPriority = useCallback((idx) => {
+    priorityRef.current = idx;
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
-    const f = HUMUS_SCROLL_WORLD.frames;
-    const { set, stride } = pickQuality();
+    const cfg = HUMUS_SCROLL_WORLD.frames;
+    const { set, stride, concurrency } = pickQuality();
     const loaded = new Array(total).fill(false);
     let loadedCount = 0;
 
@@ -53,7 +66,7 @@ export function useFrameSequence() {
           markLoaded(idx);
           resolve();
         };
-        img.src = frameSrc(set, idx + f.firstIndex, f);
+        img.src = frameSrc(set, idx + cfg.firstIndex, cfg);
       });
 
     async function run() {
@@ -65,21 +78,34 @@ export function useFrameSequence() {
       if (cancelled) return;
       setFirstPassReady(true);
 
-      const remaining = [];
-      for (let i = 0; i < total; i++) if (!loaded[i]) remaining.push(i);
+      const pending = new Set();
+      for (let i = 0; i < total; i++) if (!loaded[i]) pending.add(i);
 
-      const idle = window.requestIdleCallback || ((cb) => setTimeout(cb, 60));
-      let cursor = 0;
-      const step = () => {
-        if (cancelled) return;
-        const batchEnd = Math.min(cursor + 6, remaining.length);
-        const batch = [];
-        for (; cursor < batchEnd; cursor++) batch.push(loadOne(remaining[cursor]));
-        Promise.all(batch).then(() => {
-          if (!cancelled && cursor < remaining.length) idle(step);
-        });
+      // nearest pending frame to where the viewer currently is
+      const takeNearest = () => {
+        const from = Math.min(total - 1, Math.max(0, priorityRef.current));
+        for (let r = 0; r < total; r++) {
+          if (pending.has(from + r)) {
+            pending.delete(from + r);
+            return from + r;
+          }
+          if (pending.has(from - r)) {
+            pending.delete(from - r);
+            return from - r;
+          }
+        }
+        return -1;
       };
-      if (remaining.length) idle(step);
+
+      const worker = async () => {
+        while (!cancelled) {
+          const idx = takeNearest();
+          if (idx < 0) return;
+          await loadOne(idx);
+        }
+      };
+
+      await Promise.all(Array.from({ length: concurrency }, worker));
     }
 
     run();
@@ -90,5 +116,5 @@ export function useFrameSequence() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [total]);
 
-  return { imagesRef, total, firstPassReady, loadRatio };
+  return { imagesRef, total, firstPassReady, loadRatio, setPriority };
 }

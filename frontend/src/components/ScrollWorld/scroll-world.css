@@ -81,7 +81,8 @@
 
 .sw-skip {
   position: absolute;
-  top: 6vh;
+  /* clears the fixed site header, which is ~80px tall */
+  top: clamp(96px, 11vh, 132px);
   right: 6vw;
   z-index: 20;
   font-family: "IBM Plex Mono", monospace;
@@ -392,8 +393,10 @@
 @media (max-width: 860px) {
   .sw-hud { right: 3.5vw; gap: 0.6rem; }
   .sw-hud-rail { height: 22vh; min-height: 140px; }
-  .sw-minimap-wrap { bottom: auto; top: 4vh; left: 3.5vw; }
+  .sw-minimap-wrap { bottom: auto; top: 92px; left: 3.5vw; }
   .sw-minimap { width: 84px; padding: 7px; }
-  .sw-intro { bottom: auto; top: 8vh; left: 5vw; right: 5vw; max-width: none; }
-  .sw-skip { top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 108px); right: 5vw; }
+  /* below the minimap/skip row, which ends at ~176px */
+  .sw-intro { bottom: auto; top: 194px; left: 5vw; right: 5vw; max-width: none; }
+  /* top-right, opposite the minimap: at the bottom it collided with the sheet */
+  .sw-skip { top: 92px; bottom: auto; right: 5vw; }
 }

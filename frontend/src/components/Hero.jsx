@@ -43,12 +43,14 @@ export default function Hero() {
           className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[42vh] h-[42vh] rounded-full"
           style={{ background: "radial-gradient(circle, rgba(212,137,36,0.20) 0%, transparent 62%)" }}
         />
-        <div style={{ perspective: 1000 }}>
+        {/* On phones the intro text runs across the roots; the illustration
+            steps back there so the copy stays readable. */}
+        <div style={{ perspective: 1000 }} className="opacity-35 md:opacity-100">
           <motion.img
             src={`${process.env.PUBLIC_URL}/sprout.png`}
             alt=""
             data-testid="hero-sprout"
-            className="relative h-[52vh] md:h-[68vh] w-auto"
+            className="relative h-[42vh] md:h-[68vh] w-auto"
             initial={{ opacity: 0, y: 40, rotateZ: -4 }}
             animate={{
               opacity: 1,
@@ -106,16 +108,18 @@ export default function Hero() {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, delay: 1.1, ease: [0.22, 1, 0.36, 1] }}
-            className="md:col-span-5 md:col-start-1 font-display italic text-2xl md:text-3xl text-[#1A3626] leading-snug"
+            className="md:col-span-4 md:col-start-1 font-display italic text-2xl md:text-3xl text-[#1A3626] leading-snug"
             data-testid="hero-tagline"
           >
             {t.tagline}
           </motion.p>
+          {/* kept left of the sprout illustration, which occupies the right
+              fifth of the viewport and made this paragraph unreadable */}
           <motion.p
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, delay: 1.25, ease: [0.22, 1, 0.36, 1] }}
-            className="md:col-span-4 md:col-start-9 font-body text-base text-[#1A3626]/75 leading-relaxed"
+            className="md:col-span-4 md:col-start-6 font-body text-base text-[#1A3626]/75 leading-relaxed"
           >
             {t.intro}
           </motion.p>

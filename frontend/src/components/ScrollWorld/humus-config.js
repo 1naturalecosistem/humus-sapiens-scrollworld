@@ -7,13 +7,20 @@
 // FRAME SWAP (Gemini / Higgsfield render):
 // drop the new sequence into public/assets/frames/<set>/ keeping the naming
 // `humus_frame_0001.webp … humus_frame_NNNN.webp`, then update `frames.count`.
-// Current sequence: real drone footage, ungraded. 300 frames sampled evenly
-// across a single 89.5s flight cut to follow the hotspot narrative:
-//   arrival over the farm      0.MP4 29.0-44.9s
-//   the two guest houses       1.MP4  0.0-32.8s  (continuous with the next)
-//   terraces, garden, forest   2.MP4  0.0-33.0s
-//   the ridge at sunset        2.MP4 71.0-81.9s
-// Segments are joined with a ~1s crossfade so the flight reads as one move.
+// Current sequence: real drone footage, ungraded. 240 frames across a 45.1s
+// flight cut to follow the hotspot narrative:
+//   arrival over the farm      0.MP4 37.0-44.9s
+//   the two guest houses       1.MP4  5.0-18.0s
+//   terraces and garden        2.MP4  2.0-13.0s
+//   forest and the clearing    2.MP4 21.0-29.5s
+//   the ridge at sunset        2.MP4 74.0-81.9s
+// Joined with 0.8s crossfades so the flight reads as one continuous move.
+//
+// Why 45s and not the full 90s of footage: how steppy the scrub feels is set
+// by how much world motion each painted frame advances, i.e. by the ratio of
+// footage seconds to scroll distance — not by the frame count. Halving the
+// footage and lengthening `scrollLengthVh` is what makes it glide; adding
+// frames past what the scroll can traverse only adds weight.
 // ============================================================================
 
 export const HUMUS_SCROLL_WORLD = {
@@ -23,20 +30,26 @@ export const HUMUS_SCROLL_WORLD = {
     ext: "webp",
     pad: 4,          // humus_frame_0001
     firstIndex: 1,
-    count: 300,
+    count: 240,
     // resolution sets: key -> subfolder. Picked at runtime (viewport + network).
     sets: {
       desktop: "1600",
       mobile: "720",
     },
+    // pixel width of the files in `sets.desktop` — the canvas never allocates
+    // a backing store wider than this, there would be no detail to show in it
+    sourceWidth: 1600,
     // phase-1 preload loads every Nth frame, the rest streams in background
     preloadStride: 4,
     // on slow connections (2g/3g/saveData) the stride widens and mobile set is forced
     slowStride: 8,
+    // parallel requests used to backfill the remaining frames
+    concurrency: 8,
   },
 
-  // total scroll distance of the flight, in viewport-heights (~6.4 screens)
-  scrollLengthVh: 640,
+  // total scroll distance of the flight, in viewport-heights (~8 screens).
+  // Spreads 45s of footage over more pixels => less motion per painted frame.
+  scrollLengthVh: 800,
 
   // section that "Salta l'animazione" jumps to
   skipTargetId: "chi-siamo",
@@ -44,13 +57,13 @@ export const HUMUS_SCROLL_WORLD = {
   // Drone height above ground during the flight (m AGL), as [progress%, meters].
   // [Inferenza] estimated profile of the joined flight — edit freely, it is display-only.
   altitudeProfile: [
-    [0, 62],
-    [9, 70],
-    [32, 48],
-    [56, 32],
-    [80, 55],
-    [95, 84],
-    [100, 90],
+    [0, 64],
+    [8, 72],
+    [36, 46],
+    [51, 30],
+    [78, 58],
+    [93, 86],
+    [100, 92],
   ],
 
   // Minimap: stylised property outline + flight path (0–100 viewBox units).
@@ -74,7 +87,7 @@ export const HUMUS_SCROLL_WORLD = {
   hotspots: [
     {
       id: "arrivo",
-      at: 9,
+      at: 8,
       dwell: 6,
       pos: { x: "7%", y: "16%" },
       target: "il-luogo",
@@ -97,7 +110,7 @@ export const HUMUS_SCROLL_WORLD = {
     },
     {
       id: "ospitalita",
-      at: 32,
+      at: 36,
       dwell: 6,
       pos: { x: "55%", y: "14%" },
       target: "agricampeggio",
@@ -120,7 +133,7 @@ export const HUMUS_SCROLL_WORLD = {
     },
     {
       id: "permacultura",
-      at: 56,
+      at: 51,
       dwell: 6,
       pos: { x: "56%", y: "40%" },
       target: "shop",
@@ -143,7 +156,7 @@ export const HUMUS_SCROLL_WORLD = {
     },
     {
       id: "bosco",
-      at: 80,
+      at: 78,
       dwell: 6,
       pos: { x: "7%", y: "18%" },
       target: "il-luogo",
@@ -166,7 +179,7 @@ export const HUMUS_SCROLL_WORLD = {
     },
     {
       id: "tramonto",
-      at: 95,
+      at: 93,
       dwell: 7,
       pos: { x: "50%", y: "22%" },
       target: "contatti",
