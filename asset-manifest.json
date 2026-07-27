@@ -1,13 +1,13 @@
 {
   "files": {
-    "main.css": "/humus-sapiens-scrollworld/static/css/main.5dd1a2de.css",
-    "main.js": "/humus-sapiens-scrollworld/static/js/main.afc5ca8b.js",
+    "main.css": "/humus-sapiens-scrollworld/static/css/main.6f1249d6.css",
+    "main.js": "/humus-sapiens-scrollworld/static/js/main.a47ccec5.js",
     "index.html": "/humus-sapiens-scrollworld/index.html",
-    "main.5dd1a2de.css.map": "/humus-sapiens-scrollworld/static/css/main.5dd1a2de.css.map",
-    "main.afc5ca8b.js.map": "/humus-sapiens-scrollworld/static/js/main.afc5ca8b.js.map"
+    "main.6f1249d6.css.map": "/humus-sapiens-scrollworld/static/css/main.6f1249d6.css.map",
+    "main.a47ccec5.js.map": "/humus-sapiens-scrollworld/static/js/main.a47ccec5.js.map"
   },
   "entrypoints": [
-    "static/css/main.5dd1a2de.css",
-    "static/js/main.afc5ca8b.js"
+    "static/css/main.6f1249d6.css",
+    "static/js/main.a47ccec5.js"
   ]
 }
