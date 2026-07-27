@@ -28,6 +28,7 @@ export const NAV = {
     { id: "esplora-il-territorio", label: "Esplora il Territorio" },
     { id: "chi-siamo", label: "Chi Siamo" },
     { id: "agricampeggio", label: "Ospitalità" },
+    { id: "prenota", label: "Prenota" },
     { id: "bee-humus", label: "Bee Humus" },
     { id: "shop", label: "Shop" },
     { id: "raccolti", label: "R'Accolti" },
@@ -39,6 +40,7 @@ export const NAV = {
     { id: "esplora-il-territorio", label: "Explore the Land" },
     { id: "chi-siamo", label: "About" },
     { id: "agricampeggio", label: "Stay" },
+    { id: "prenota", label: "Book" },
     { id: "bee-humus", label: "Bee Humus" },
     { id: "shop", label: "Shop" },
     { id: "raccolti", label: "R'Accolti" },
@@ -203,14 +205,14 @@ export const CONTENT = {
           n: "04",
           title: "Rigenerazione, non conservazione",
           body:
-            "L'obiettivo non è mantenere il fondo com'è, ma renderlo più ricco ogni anno. Più suolo vivo, più acqua trattenuta, più vita. La presenza umana contribuisce, non sottrae.",
+            "L'obiettivo non è mantenere il suolo (Fondo) com'è, ma renderlo più ricco ogni anno. Più suolo vivo, più acqua trattenuta, più vita. La presenza umana contribuisce, non sottrae.",
         },
       ],
     },
     agricampeggio: {
       label: "Ospitalità · Agricampeggio Rigenerativo",
       heading: "Non una vacanza nel verde.",
-      headingEm: "Il ritmo di un fondo vero",
+      headingEm: "Il ritmo di un suolo vero",
       lead:
         "Due ville in agriturismo e otto piazzole immerse in una food forest in sviluppo, a 672 metri di quota, dentro la Rete Natura 2000. Non un campeggio vicino alla natura: dentro un sistema che sta crescendo. A venti minuti dal mare di Sestri Levante, a un mondo di distanza.",
       stats: [
@@ -220,6 +222,15 @@ export const CONTENT = {
       ],
       quote:
         "Non è un campeggio vicino alla natura: è dentro un sistema che sta crescendo, dove ogni anno il fondo è più ricco del precedente.",
+    },
+    prenota: {
+      label: "Prenota · Disponibilità in tempo reale",
+      heading: "Prenota il tuo",
+      headingEm: "soggiorno",
+      lead:
+        "Scegli le date e prenota direttamente con noi: nessun intermediario, nessuna commissione aggiuntiva. Ville in agriturismo e piazzole nella food forest.",
+      iframeTitle: "Prenotazione soggiorno — Humus Sapiens",
+      note: "Prenotazione diretta · CIN IT010013B5EKQITTKX",
     },
     beeHumus: {
       label: "Bee Humus · Apicoltura Rigenerativa",
@@ -402,6 +413,15 @@ export const CONTENT = {
       ],
       quote:
         "This is not camping near nature: it is camping inside a system that is growing, richer every year than the last.",
+    },
+    prenota: {
+      label: "Book · Real-time availability",
+      heading: "Book your",
+      headingEm: "stay",
+      lead:
+        "Pick your dates and book directly with us: no middleman, no extra commission. Farmhouse villas and pitches in the food forest.",
+      iframeTitle: "Book a stay — Humus Sapiens",
+      note: "Direct booking · CIN IT010013B5EKQITTKX",
     },
     beeHumus: {
       label: "Bee Humus · Regenerative Beekeeping",

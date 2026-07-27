@@ -7,6 +7,7 @@ import Hero from "@/components/Hero";
 import EsploraIlTerritorio from "@/components/ScrollWorld/EsploraIlTerritorio";
 import ChiSiamo from "@/components/ChiSiamo";
 import Agricampeggio from "@/components/Agricampeggio";
+import Prenota from "@/components/Prenota";
 import BeeHumus from "@/components/BeeHumus";
 import Shop from "@/components/Shop";
 import RAccolti from "@/components/RAccolti";
@@ -27,6 +28,7 @@ function App() {
             <EsploraIlTerritorio />
             <ChiSiamo />
             <Agricampeggio />
+            <Prenota />
             <BeeHumus />
             <Shop />
             <RAccolti />

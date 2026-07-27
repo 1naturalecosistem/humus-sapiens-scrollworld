@@ -86,9 +86,19 @@ export default function Hero() {
           {t.kicker}
         </motion.p>
 
-        <h1 className="font-display font-light leading-[0.86] text-[#1A3626] text-[19vw] sm:text-[16vw] lg:text-[13vw]">
-          <MaskLines lines={[t.line1]} delay={0.3} />
-          <MaskLines lines={[t.line2]} delay={0.45} lineClassName="italic pl-[0.06em] text-[#2f4c3a]" />
+        {/* One line: "Humus Sapiens". Sized with clamp + nowrap so the whole
+            wordmark always fits the container, from phone to ultrawide. */}
+        <h1 className="font-display font-light leading-[0.9] text-[#1A3626] text-[clamp(2.4rem,10vw,9.5rem)] whitespace-nowrap">
+          <MaskLines
+            label={`${t.line1} ${t.line2}`}
+            delay={0.3}
+            lines={[
+              <>
+                {t.line1}{" "}
+                <span className="italic text-[#2f4c3a]">{t.line2}</span>
+              </>,
+            ]}
+          />
         </h1>
 
         <div className="mt-8 md:mt-12 grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 items-end">

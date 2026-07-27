@@ -19,9 +19,9 @@ export function Reveal({ children, delay = 0, y = 28, className = "", once = fal
 }
 
 // Line-by-line masked text reveal (hero signature moment).
-export function MaskLines({ lines, className = "", lineClassName = "", stagger = 0.12, delay = 0.1 }) {
+export function MaskLines({ lines, className = "", lineClassName = "", stagger = 0.12, delay = 0.1, label }) {
   return (
-    <span className={className} aria-label={lines.join(" ")}>
+    <span className={className} aria-label={label ?? lines.join(" ")}>
       {lines.map((line, i) => (
         <span key={i} className="line-mask">
           <motion.span

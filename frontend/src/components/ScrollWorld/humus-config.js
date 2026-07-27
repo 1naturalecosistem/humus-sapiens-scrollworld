@@ -7,9 +7,13 @@
 // FRAME SWAP (Gemini / Higgsfield render):
 // drop the new sequence into public/assets/frames/<set>/ keeping the naming
 // `humus_frame_0001.webp … humus_frame_NNNN.webp`, then update `frames.count`.
-// Current sequence: real drone footage, 300 frames sampled evenly across a
-// single ~157s flight made of 3 clips (0.MP4, 1.MP4, 2.MP4) joined with a
-// 1.5s crossfade at each cut for a continuous, uninterrupted flight.
+// Current sequence: real drone footage, ungraded. 300 frames sampled evenly
+// across a single 89.5s flight cut to follow the hotspot narrative:
+//   arrival over the farm      0.MP4 29.0-44.9s
+//   the two guest houses       1.MP4  0.0-32.8s  (continuous with the next)
+//   terraces, garden, forest   2.MP4  0.0-33.0s
+//   the ridge at sunset        2.MP4 71.0-81.9s
+// Segments are joined with a ~1s crossfade so the flight reads as one move.
 // ============================================================================
 
 export const HUMUS_SCROLL_WORLD = {
@@ -40,13 +44,13 @@ export const HUMUS_SCROLL_WORLD = {
   // Drone height above ground during the flight (m AGL), as [progress%, meters].
   // [Inferenza] estimated profile of the joined flight — edit freely, it is display-only.
   altitudeProfile: [
-    [0, 5],
-    [10, 45],
-    [32, 58],
-    [54, 52],
-    [75, 38],
-    [94, 50],
-    [100, 45],
+    [0, 62],
+    [9, 70],
+    [32, 48],
+    [56, 32],
+    [80, 55],
+    [95, 84],
+    [100, 90],
   ],
 
   // Minimap: stylised property outline + flight path (0–100 viewBox units).
@@ -70,7 +74,7 @@ export const HUMUS_SCROLL_WORLD = {
   hotspots: [
     {
       id: "arrivo",
-      at: 10,
+      at: 9,
       dwell: 6,
       pos: { x: "7%", y: "16%" },
       target: "il-luogo",
@@ -116,12 +120,12 @@ export const HUMUS_SCROLL_WORLD = {
     },
     {
       id: "permacultura",
-      at: 54,
+      at: 56,
       dwell: 6,
       pos: { x: "56%", y: "40%" },
       target: "shop",
       it: {
-        eyebrow: "03 · Orto & Permacultura",
+        eyebrow: "04 · Orto & Permacultura",
         title: "Coltivare imitando il bosco",
         body:
           "Ortaggi, frutti e piante officinali crescono in policoltura, senza chimica: il suolo si rigenera e diventa raccolto.",
@@ -129,7 +133,7 @@ export const HUMUS_SCROLL_WORLD = {
         ctaSecondary: "Scopri di più",
       },
       en: {
-        eyebrow: "03 · Garden & Permaculture",
+        eyebrow: "04 · Garden & Permaculture",
         title: "Farming like a forest",
         body:
           "Vegetables, fruit and medicinal plants grow in polyculture, chemical-free: the soil regenerates and becomes harvest.",
@@ -139,12 +143,12 @@ export const HUMUS_SCROLL_WORLD = {
     },
     {
       id: "bosco",
-      at: 75,
+      at: 80,
       dwell: 6,
       pos: { x: "7%", y: "18%" },
       target: "il-luogo",
       it: {
-        eyebrow: "04 · Il Bosco",
+        eyebrow: "05 · Il Bosco",
         title: "ZSC Alta Val Petronio",
         body:
           "Il volo attraversa la Zona Speciale di Conservazione: corridoi ecologici, biodiversità, acqua. Qui si misura la rigenerazione.",
@@ -152,7 +156,7 @@ export const HUMUS_SCROLL_WORLD = {
         ctaSecondary: "Scopri di più",
       },
       en: {
-        eyebrow: "04 · The Forest",
+        eyebrow: "05 · The Forest",
         title: "Natura 2000 · Alta Val Petronio",
         body:
           "The flight crosses the Special Area of Conservation: ecological corridors, biodiversity, water. Regeneration is measured here.",
@@ -162,12 +166,12 @@ export const HUMUS_SCROLL_WORLD = {
     },
     {
       id: "tramonto",
-      at: 94,
-      dwell: 8,
+      at: 95,
+      dwell: 7,
       pos: { x: "50%", y: "22%" },
       target: "contatti",
       it: {
-        eyebrow: "05 · Il Tramonto",
+        eyebrow: "06 · Il Tramonto",
         title: "Resta a guardarlo da qui",
         body:
           "La luce scende sul crinale e la valle rallenta. Il posto migliore per vederlo non è uno schermo: è la terrazza del casale.",
@@ -175,7 +179,7 @@ export const HUMUS_SCROLL_WORLD = {
         ctaSecondary: "Contattaci",
       },
       en: {
-        eyebrow: "05 · The Sunset",
+        eyebrow: "06 · The Sunset",
         title: "Stay and watch it from here",
         body:
           "Light falls on the ridge and the valley slows down. The best place to watch it is not a screen: it is the farmhouse terrace.",

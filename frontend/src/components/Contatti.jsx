@@ -115,7 +115,7 @@ export default function Contatti() {
       <div className="w-full h-[380px] md:h-[460px]" data-testid="footer-map">
         <iframe
           title="Humus Sapiens — Google Maps"
-          src="https://www.google.com/maps?q=44.32,9.42&z=15&output=embed"
+          src="https://www.google.com/maps?q=Localit%C3%A0%20Baresi%2015%2C%2016030%20Castiglione%20Chiavarese%20GE&z=14&output=embed"
           className="w-full h-full block"
           style={{ border: 0 }}
           loading="lazy"
