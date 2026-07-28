@@ -26,7 +26,7 @@ export default function RAccolti() {
 
         <div className="grid grid-cols-1 md:grid-cols-12 gap-10 items-start">
           <Reveal className="md:col-span-5 relative overflow-hidden aspect-[4/5]" y={30}>
-            <img src={IMAGES.community} alt="Tramonto sulla valle dal fondo" className="w-full h-full object-cover" loading="lazy" />
+            <img src={IMAGES.community} alt="Lavoro nelle aiuole a mezzaluna del fondo" className="w-full h-full object-cover" loading="lazy" />
           </Reveal>
 
           <div className="md:col-span-6 md:col-start-7">

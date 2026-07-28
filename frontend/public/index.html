@@ -12,6 +12,13 @@
         <link rel="icon" href="%PUBLIC_URL%/logo.png" />
         <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo.png" />
 
+        <!-- Canonical, og:url and og:image are absolute on purpose: relative
+             values are fine for the browser but most social and search crawlers
+             discard them. They point at the GitHub Pages address the site is
+             served from today — all three have to change together the day a
+             proper domain is pointed at it. -->
+        <link rel="canonical" href="https://1naturalecosistem.github.io/humus-sapiens-scrollworld/" />
+
         <!-- Open Graph / social sharing -->
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="Humus Sapiens" />
@@ -20,7 +27,14 @@
             property="og:description"
             content="Agricampeggio rigenerativo, apicoltura e agricoltura sociale nell'entroterra di Sestri Levante, dentro la Rete Natura 2000."
         />
-        <meta property="og:image" content="%PUBLIC_URL%/casale.jpg" />
+        <meta property="og:url" content="https://1naturalecosistem.github.io/humus-sapiens-scrollworld/" />
+        <meta
+            property="og:image"
+            content="https://1naturalecosistem.github.io/humus-sapiens-scrollworld/og-image.jpg"
+        />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content="Tramonto sul mare dall'Alta Val Petronio" />
         <meta property="og:locale" content="it_IT" />
         <meta property="og:locale:alternate" content="en_US" />
         <meta name="twitter:card" content="summary_large_image" />

@@ -46,6 +46,17 @@ export default function Agricampeggio() {
           <div className="grid grid-cols-1 md:grid-cols-12 gap-10 items-start mt-10">
             <Reveal className="md:col-span-5" y={26}>
               <p className="font-body text-lg md:text-xl text-[#1A3626]/80 leading-relaxed">{t.lead}</p>
+              {/* The full-bleed image above is the view out; this is the food
+                  forest the pitches actually sit in, which the copy claims and
+                  nothing on the page was showing. */}
+              <div className="relative overflow-hidden aspect-[4/3] mt-10 bg-[#D3D9C9]">
+                <img
+                  src={IMAGES.foodForest}
+                  alt="Le aiuole della food forest dentro il bosco di castagni"
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </div>
             </Reveal>
 
             <div className="md:col-span-6 md:col-start-7">

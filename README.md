@@ -21,7 +21,45 @@ npm run build      # build di produzione in frontend/build/
   - `SHOP` / `ARTICLES` — prodotti miele e articoli blog
 - **Articoli blog**: markdown in `frontend/public/articles/` (IT) e `articles/en/`
 - **Design system**: `design_guidelines.json` (font, palette, spacing)
-- **Foto locali**: vanno in `frontend/public/` e referenziate come `/nomefile.jpg`
+
+## Foto e video
+
+Tutto quello che si vede sul sito è materiale dell'azienda: nessuna foto stock,
+nessun asset caricato da un host esterno.
+
+Gli originali (scatti da telefono, clip WhatsApp) stanno **fuori dal repo**, in
+`../media da integrare/`. I file che il sito serve sono ritagli derivati:
+
+```bash
+python3 scripts/prepare_media.py "../media da integrare"
+```
+
+Lo script scrive in `frontend/public/`. Le regole di ritaglio — riquadro,
+ancoraggio, proporzioni, qualità JPEG — stanno in cima al file: per cambiare
+un'inquadratura si modifica lì e si rilancia, non si ritocca il JPEG a mano.
+Niente viene mai ingrandito: i fotogrammi estratti dalle clip restano a 464 px.
+
+| file | da | dove si vede |
+|---|---|---|
+| `apiario.jpg` | foto arnie | Bee Humus, pannello destro |
+| `favo.jpg` | fotogramma disopercolatura | Bee Humus, pannello sinistro |
+| `aiuole.jpg` | foto aiuole a mezzaluna | R'Accolti |
+| `foodforest.jpg` | food forest nel bosco | Ospitalità |
+| `cover-*.jpg` | foto e fotogrammi | copertine dei 5 articoli di Radici |
+| `og-image.jpg` | ritaglio di `valle.jpg` | anteprima social (1200×630) |
+
+`casale.jpg`, `terrazza.jpg`, `valle.jpg` e gli asset del volo arrivano invece
+dalla pipeline del drone (sotto).
+
+`favo.jpg`, `cover-sciame.jpg` e `cover-arnie.jpg` sono fotogrammi estratti da
+clip girate col telefono: 464-576 px, gli unici asset del sito sotto i 1200 px.
+Non esistono foto dell'interno dell'alveare né del miele, solo video.
+
+La clip della disopercolatura era stata montata come video in loop nel pannello
+di Bee Humus, ed è stata tolta: con il video del volo già in decodifica poco
+sopra, il secondo stream fallisce con `MEDIA_ERR_DECODE` (verificato in
+Chromium — isolati funzionano entrambi, insieme no). Il volo è il pezzo su cui
+è costruita la pagina e non vale la pena rischiarlo per un loop di 464 px.
 
 ## Il volo del drone ("Esplora il Territorio")
 
@@ -62,5 +100,8 @@ Dopo `measure_warp.py` va incollata la nuova tabella `timeWarp` in
 
 - Solo vetrina: shop e newsletter aprono `mailto:` (nessun backend).
 - Decisioni di progetto: `memory/PRD.md`.
-- `BeeHumus` e `Blog` usano ancora 7 foto stock esterne (Pexels): vanno
-  sostituite con foto proprie quando disponibili.
+- `canonical`, `og:url` e `og:image` in `public/index.html` sono URL assoluti che
+  puntano all'indirizzo GitHub Pages attuale: vanno cambiati tutti e tre il
+  giorno in cui il sito passa su un dominio proprio.
+- Mancano ancora foto vere dei **vasetti di miele** (lo Shop mostra solo le
+  etichette) e delle **camere delle due ville**.

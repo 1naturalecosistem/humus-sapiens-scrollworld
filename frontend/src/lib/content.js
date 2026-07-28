@@ -1,14 +1,16 @@
-// Centralized bilingual content + image placeholders.
-// Replace any image URL below with your own photography later.
-
-// Real farm photos live in /public (source: Foto e Video/Foto HS/).
-// beekeepers + honeyJar are still stock: waiting for real Bee Humus shots.
+// Centralized bilingual content + media.
+//
+// Every image and clip on the site is the farm's own: nothing here is stock, and
+// nothing is fetched from a third-party host. The derived files in /public are
+// cut from the originals by `scripts/prepare_media.py` — change a crop there and
+// re-run it rather than editing the JPEGs by hand.
 export const IMAGES = {
-  soilHands: `${process.env.PUBLIC_URL}/casale.jpg`, // aerial view of the farm
+  soilHands: `${process.env.PUBLIC_URL}/casale.jpg`, // aerial view of the two villas
   tentForest: `${process.env.PUBLIC_URL}/terrazza.jpg`, // picnic table overlooking the sea
-  beekeepers: "https://images.pexels.com/photos/2260932/pexels-photo-2260932.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=1000&w=800",
-  honeyJar: "https://images.pexels.com/photos/4921856/pexels-photo-4921856.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=1000&w=800",
-  community: `${process.env.PUBLIC_URL}/tramonto.jpg`, // sunset over the valley fence
+  foodForest: `${process.env.PUBLIC_URL}/foodforest.jpg`, // the beds inside the chestnut wood
+  beekeepers: `${process.env.PUBLIC_URL}/apiario.jpg`, // the hives under the trees
+  honeycomb: `${process.env.PUBLIC_URL}/favo.jpg`, // uncapping the comb — a video frame, 464px
+  community: `${process.env.PUBLIC_URL}/aiuole.jpg`, // working the crescent beds
   luogo: `${process.env.PUBLIC_URL}/valle.jpg`, // wide sunset panorama towards the sea
 };
 
@@ -91,7 +93,7 @@ export const ARTICLES = [
     pillar: "rigenerativa",
     file: "/articles/01-permacultura.md",
     fileEn: "/articles/en/01-permaculture.md",
-    cover: "https://images.pexels.com/photos/17846380/pexels-photo-17846380.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+    cover: `${process.env.PUBLIC_URL}/cover-permacultura.jpg`,
     date: "2026-07-24",
     mins: 6,
     title: "Cos'è la permacultura e i 12 principi di Holmgren",
@@ -106,7 +108,7 @@ export const ARTICLES = [
     pillar: "diario",
     file: "/articles/02-socialita-api.md",
     fileEn: "/articles/en/02-bee-sociality.md",
-    cover: "https://images.pexels.com/photos/971355/pexels-photo-971355.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+    cover: `${process.env.PUBLIC_URL}/cover-sciame.jpg`,
     date: "2026-07-24",
     mins: 5,
     title: "La socialità delle api: come funziona una colonia",
@@ -121,7 +123,7 @@ export const ARTICLES = [
     pillar: "problema",
     file: "/articles/03-impollinatori.md",
     fileEn: "/articles/en/03-pollinators.md",
-    cover: "https://images.pexels.com/photos/38625063/pexels-photo-38625063.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+    cover: `${process.env.PUBLIC_URL}/cover-arnie.jpg`,
     date: "2026-07-24",
     mins: 6,
     title: "La crisi degli impollinatori nel mondo",
@@ -136,7 +138,7 @@ export const ARTICLES = [
     pillar: "tossicita",
     file: "/articles/04-microplastiche.md",
     fileEn: "/articles/en/04-microplastics.md",
-    cover: "https://images.pexels.com/photos/27798146/pexels-photo-27798146.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+    cover: `${process.env.PUBLIC_URL}/cover-mare.jpg`,
     date: "2026-07-24",
     mins: 6,
     title: "Microplastiche: che succede nel mondo?",
@@ -151,7 +153,7 @@ export const ARTICLES = [
     pillar: "problema",
     file: "/articles/05-nutrizione.md",
     fileEn: "/articles/en/05-nutrition.md",
-    cover: "https://images.pexels.com/photos/31834232/pexels-photo-31834232.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+    cover: `${process.env.PUBLIC_URL}/cover-orto.jpg`,
     date: "2026-07-24",
     mins: 7,
     title: "Nutrizione: il futuro sta nelle nostre radici?",
@@ -253,6 +255,8 @@ export const CONTENT = {
         },
       ],
       quote: "L'alveare non è una macchina da miele. È un organismo che pensa, decide, si adatta.",
+      // Also the alt text of the two media: they carry the meaning of the panels.
+      captions: { honey: "Disopercolatura del favo", apiary: "L'apiario nel bosco" },
     },
     shop: {
       label: "Shop · I mieli del fondo",
@@ -444,6 +448,7 @@ export const CONTENT = {
         },
       ],
       quote: "The hive is not a honey machine. It is an organism that thinks, decides, adapts.",
+      captions: { honey: "Uncapping the comb", apiary: "The apiary in the wood" },
     },
     shop: {
       label: "Shop · Honey from the farm",

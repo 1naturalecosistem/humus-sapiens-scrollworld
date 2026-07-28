@@ -29,10 +29,13 @@ export default function BeeHumus() {
         </div>
 
         <div ref={ref} className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8 items-stretch">
-          {/* image tall */}
+          {/* Uncapping the comb. A frame out of a phone clip, so 464px against a
+              column about that wide — deliberately still: played as a video it
+              competes with the drone flight above for an H.264 decoder, and the
+              flight is what this page is built around. */}
           <div className="md:col-span-4 relative overflow-hidden aspect-[3/4] md:aspect-auto md:min-h-[560px]">
-            <motion.img style={{ y: y1 }} src={IMAGES.honeyJar} alt="Miele" className="absolute inset-x-0 -top-[17%] w-full h-[137%] object-cover" loading="lazy" />
-            <div className="absolute bottom-4 left-4 font-mono-label text-[10px] tracking-label text-[#2B231D] bg-[#D48924] px-3 py-1.5">[ IMG · MIELE ]</div>
+            <motion.img style={{ y: y1 }} src={IMAGES.honeycomb} alt={t.captions.honey} className="absolute inset-x-0 -top-[17%] w-full h-[137%] object-cover" loading="lazy" />
+            <div className="absolute bottom-4 left-4 font-mono-label text-[10px] tracking-label text-[#2B231D] bg-[#D48924] px-3 py-1.5">{t.captions.honey}</div>
           </div>
 
           {/* text lead */}
@@ -47,8 +50,8 @@ export default function BeeHumus() {
 
           {/* image */}
           <div className="md:col-span-4 relative overflow-hidden aspect-[3/4] md:aspect-auto md:min-h-[560px]">
-            <motion.img style={{ y: y2 }} src={IMAGES.beekeepers} alt="Apicoltori" className="absolute inset-x-0 -top-[17%] w-full h-[137%] object-cover" loading="lazy" />
-            <div className="absolute bottom-4 left-4 font-mono-label text-[10px] tracking-label text-[#2B231D] bg-[#D48924] px-3 py-1.5">[ IMG · APIARIO ]</div>
+            <motion.img style={{ y: y2 }} src={IMAGES.beekeepers} alt={t.captions.apiary} className="absolute inset-x-0 -top-[17%] w-full h-[137%] object-cover" loading="lazy" />
+            <div className="absolute bottom-4 left-4 font-mono-label text-[10px] tracking-label text-[#2B231D] bg-[#D48924] px-3 py-1.5">{t.captions.apiary}</div>
           </div>
         </div>
 

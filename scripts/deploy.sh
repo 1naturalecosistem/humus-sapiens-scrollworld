@@ -60,9 +60,28 @@ check_image() {  # file  min_width
 check_image casale.jpg 1100
 check_image terrazza.jpg 2400
 check_image valle.jpg 1900
-check_image tramonto.jpg 1100
 check_image sprout.png 450
 check_image logo.png 900
+
+# Photos and article covers derived by scripts/prepare_media.py. The widths are
+# what that script produces; a mismatch means public/ is holding an older cut.
+check_image apiario.jpg 1200
+check_image aiuole.jpg 1200
+check_image foodforest.jpg 1050
+check_image og-image.jpg 1200
+check_image cover-permacultura.jpg 1200
+check_image cover-mare.jpg 1060
+check_image cover-orto.jpg 1440
+check_image cover-sciame.jpg 576
+check_image cover-arnie.jpg 464
+check_image favo.jpg 464
+
+# No section image or cover may be fetched from a third-party host: the site
+# ships only the farm's own photography, and an external URL creeping back in
+# would also hand every visitor's IP to that host.
+if grep -rqE 'https?://(images\.)?(pexels|unsplash)' "$BUILD/static/js/"*.js; then
+  fail "il build contiene ancora URL di foto stock (pexels/unsplash)"
+fi
 
 # The old 240-frame WebP sequence must be gone: 39MB of dead weight, and its
 # presence means an outdated public/ got copied over the new one.
