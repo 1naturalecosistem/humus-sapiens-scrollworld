@@ -8,6 +8,7 @@ import EsploraIlTerritorio from "@/components/ScrollWorld/EsploraIlTerritorio";
 import ChiSiamo from "@/components/ChiSiamo";
 import Agricampeggio from "@/components/Agricampeggio";
 import Prenota from "@/components/Prenota";
+import GoFoundMe from "@/components/GoFoundMe";
 import BeeHumus from "@/components/BeeHumus";
 import Shop from "@/components/Shop";
 import RAccolti from "@/components/RAccolti";
@@ -29,6 +30,7 @@ function App() {
             <ChiSiamo />
             <Agricampeggio />
             <Prenota />
+            <GoFoundMe />
             <BeeHumus />
             <Shop />
             <RAccolti />
