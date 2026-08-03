@@ -2,6 +2,26 @@ import { useLang } from "../lib/i18n";
 import { CONTENT, SHOP, CONTACT } from "../lib/content";
 import { Reveal, RevealWords } from "./Reveal";
 
+function StoreAction({ title, body, cta, href, accent, delay }) {
+  return (
+    <Reveal delay={delay} y={24} className="group rounded-[2rem] border border-[#1A3626]/15 bg-white/80 p-6 shadow-[0_16px_48px_rgba(0,0,0,0.06)]">
+      <div className="flex h-11 w-11 items-center justify-center rounded-full" style={{ backgroundColor: accent }}>
+        <span className="text-sm font-semibold text-white">↗</span>
+      </div>
+      <h3 className="mt-6 font-display text-2xl text-[#1A3626]">{title}</h3>
+      <p className="mt-3 font-body text-base leading-relaxed text-[#1A3626]/70">{body}</p>
+      <a
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        className="mt-6 inline-flex items-center rounded-full bg-[#1A3626] px-5 py-3 text-sm font-medium text-[#F5F3E9] transition hover:bg-[#D48924]"
+      >
+        {cta}
+      </a>
+    </Reveal>
+  );
+}
+
 function ProductCard({ data, lang, delay }) {
   const c = data[lang];
   const t = CONTENT[lang].shop;
@@ -51,6 +71,7 @@ function ProductCard({ data, lang, delay }) {
 export default function Shop() {
   const { lang } = useLang();
   const t = CONTENT[lang].shop;
+  const mailto = `mailto:${CONTACT.email}?subject=${encodeURIComponent(lang === "it" ? "Ordine miele — Humus Sapiens" : "Honey order — Humus Sapiens")}`;
 
   return (
     <section id="shop" data-testid="shop-section" className="relative bg-[#D3D9C9]/40 py-28 md:py-40">
@@ -68,12 +89,75 @@ export default function Shop() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-          <ProductCard data={SHOP.castagno} lang={lang} delay={0} />
-          <ProductCard data={SHOP.millefiori} lang={lang} delay={0.1} />
+        <Reveal className="mb-10 rounded-[2rem] border border-[#1A3626]/15 bg-[#1A3626] p-8 text-[#F5F3E9] shadow-[0_20px_60px_rgba(0,0,0,0.12)]" y={16}>
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="font-mono-label text-[10px] uppercase tracking-label text-[#D48924]">{lang === "it" ? "Pagamento diretto" : "Direct payment"}</p>
+              <h3 className="mt-2 font-display text-3xl md:text-4xl">{lang === "it" ? "Acquisto diretto, zero commissioni" : "Direct purchase, zero commission"}</h3>
+            </div>
+            <a
+              href={mailto}
+              className="inline-flex items-center justify-center rounded-full bg-[#F5F3E9] px-5 py-3 text-sm font-medium text-[#1A3626] transition hover:bg-[#D48924] hover:text-white"
+            >
+              {lang === "it" ? "Ordina direttamente via email" : "Order directly by email"}
+            </a>
+          </div>
+          <p className="mt-5 text-sm text-[#F5F3E9]/80 max-w-2xl leading-relaxed">
+            {lang === "it"
+              ? "Scegli un prodotto, manda la richiesta e gestiamo insieme pagamento diretto o consegna. Nessuna piattaforma esterna, solo rapporto umano con Humus Sapiens."
+              : "Choose a product, send the request and we will arrange direct payment or delivery. No external platforms, only a human connection with Humus Sapiens."}
+          </p>
+        </Reveal>
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <StoreAction
+            title={lang === "it" ? "Compra il miele" : "Buy the honey"}
+            body={lang === "it" ? "Ordini diretti via email o telefono, consegna personalizzata e pagamento diretto." : "Direct orders by email or phone, personalized delivery and direct payment."}
+            cta={lang === "it" ? "Richiedi un ordine" : "Request order"}
+            href={mailto}
+            accent="#1A3626"
+            delay={0}
+          />
+          <StoreAction
+            title={lang === "it" ? "Contribuisci al progetto" : "Support the project"}
+            body={lang === "it" ? "Sostieni la rigenerazione del suolo e le attività sociali con una donazione GoFundMe." : "Support soil regeneration and social farming with a GoFundMe donation."}
+            cta={lang === "it" ? "Dona su GoFundMe" : "Donate on GoFundMe"}
+            href="https://www.gofundme.com/f/humus-sapiens"
+            accent="#D48924"
+            delay={0.08}
+          />
+          <StoreAction
+            title={lang === "it" ? "Prenota il soggiorno" : "Book your stay"}
+            body={lang === "it" ? "Camere e esperienze disponibili con prenotazione diretta, senza intermediari." : "Rooms and experiences available with direct booking, no intermediaries."}
+            cta={lang === "it" ? "Verifica disponibilità" : "Check availability"}
+            href="#prenota"
+            accent="#2f4c3a"
+            delay={0.16}
+          />
         </div>
 
-        <Reveal className="mt-12 flex items-center justify-center gap-3" y={16}>
+        <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-2">
+          <ProductCard data={SHOP.castagno} lang={lang} delay={0.2} />
+          <ProductCard data={SHOP.millefiori} lang={lang} delay={0.28} />
+        </div>
+
+        <Reveal className="mt-10 rounded-[2rem] border border-[#1A3626]/15 bg-white/90 p-8 text-[#1A3626] shadow-[0_20px_60px_rgba(0,0,0,0.08)]" y={16}>
+          <p className="font-body text-base leading-relaxed">
+            {lang === "it"
+              ? "Acquista e sostieni in modo diretto: zero frizioni, zero commissioni di piattaforma. Il tuo ordine arriva da chi coltiva, alleva e trasforma nel territorio." 
+              : "Buy and support directly: zero friction, zero platform fees. Your order comes from those who cultivate, raise and process within the territory."}
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <a href={mailto} className="rounded-full bg-[#1A3626] px-5 py-3 text-sm text-[#F5F3E9] transition hover:bg-[#D48924]">
+              {lang === "it" ? "Scrivici per un ordine" : "Email for an order"}
+            </a>
+            <a href={`tel:${CONTACT.phoneRaw}`} className="rounded-full border border-[#1A3626] px-5 py-3 text-sm text-[#1A3626] transition hover:bg-[#D48924] hover:text-white">
+              {lang === "it" ? "Chiama per ordini" : "Call to order"}
+            </a>
+          </div>
+        </Reveal>
+
+        <Reveal className="mt-10 flex items-center justify-center gap-3" y={16}>
           <span className="w-2 h-2 rounded-full bg-[#D48924] animate-pulse" />
           <span className="font-mono-label text-xs tracking-label text-[#1A3626]/60">{t.soon}</span>
         </Reveal>
