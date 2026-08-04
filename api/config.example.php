@@ -16,6 +16,8 @@ return [
     'db_host' => 'tb-be04-hclwebnx011.srv.teamblue-ops.net',
     'db_name' => 'onenat_xuwihu15',
     'db_user' => 'onenat_xuwihu15',
+    // NON scrivere qui la password vera: questo file è su GitHub.
+    // La password vera va in api/config.php, che git ignora.
     'db_pass' => 'LA_TUA_PASSWORD_DB',
 
     // --- Email ---

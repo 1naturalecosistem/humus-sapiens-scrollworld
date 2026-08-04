@@ -75,13 +75,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $flash = ['type' => 'error', 'text' => 'Token di sicurezza non valido. Ricarica la pagina.'];
     } else {
         $bookingId = filter_input(INPUT_POST, 'booking_id', FILTER_VALIDATE_INT);
+        $orderId   = filter_input(INPUT_POST, 'order_id', FILTER_VALIDATE_INT);
+        $variantId = filter_input(INPUT_POST, 'variant_id', FILTER_VALIDATE_INT);
         $newStatus = $_POST['status'] ?? '';
-        $allowed   = ['pending', 'confirmed', 'cancelled', 'completed'];
 
-        if ($bookingId && in_array($newStatus, $allowed, true)) {
+        if ($bookingId && in_array($newStatus, ['pending', 'confirmed', 'cancelled', 'completed'], true)) {
             $upd = $pdo->prepare('UPDATE `bookings` SET `status` = :status WHERE `id` = :id');
             $upd->execute([':status' => $newStatus, ':id' => $bookingId]);
             $flash = ['type' => 'ok', 'text' => 'Prenotazione #' . $bookingId . ' → ' . $newStatus . '.'];
+        } elseif ($orderId && in_array($newStatus, ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'], true)) {
+            $upd = $pdo->prepare('UPDATE `orders` SET `status` = :status WHERE `id` = :id');
+            $upd->execute([':status' => $newStatus, ':id' => $orderId]);
+            $flash = ['type' => 'ok', 'text' => 'Ordine #' . $orderId . ' → ' . $newStatus . '.'];
+        } elseif ($orderId && in_array($newStatus, ['unpaid', 'paid', 'refunded'], true)) {
+            $upd = $pdo->prepare('UPDATE `orders` SET `payment_status` = :status WHERE `id` = :id');
+            $upd->execute([':status' => $newStatus, ':id' => $orderId]);
+            $flash = ['type' => 'ok', 'text' => 'Pagamento ordine #' . $orderId . ' → ' . $newStatus . '.'];
+        } elseif ($variantId && in_array($newStatus, ['available', 'sold_out'], true)) {
+            // Esaurito/disponibile dal pannello: il sito lo recepisce subito,
+            // senza dover entrare in phpMyAdmin.
+            $upd = $pdo->prepare('UPDATE `product_variants` SET `status` = :status WHERE `id` = :id');
+            $upd->execute([':status' => $newStatus, ':id' => $variantId]);
+            $flash = ['type' => 'ok', 'text' => 'Formato #' . $variantId . ' → ' . $newStatus . '.'];
         } else {
             $flash = ['type' => 'error', 'text' => 'Richiesta non valida.'];
         }
@@ -91,10 +106,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // ---------------------------------------------------------------------
 // Lettura: filtri, statistiche, elenchi
 // ---------------------------------------------------------------------
-$view = in_array(($_GET['view'] ?? 'bookings'), ['bookings', 'customers'], true)
+$view = in_array(($_GET['view'] ?? 'bookings'), ['bookings', 'orders', 'customers', 'catalog'], true)
     ? $_GET['view'] : 'bookings';
-$statusFilter = in_array(($_GET['status'] ?? ''), ['pending', 'confirmed', 'cancelled', 'completed'], true)
-    ? $_GET['status'] : '';
+$statusFilter = in_array(
+    ($_GET['status'] ?? ''),
+    ['pending', 'confirmed', 'cancelled', 'completed', 'shipped', 'delivered'],
+    true
+) ? $_GET['status'] : '';
 $search = trim($_GET['q'] ?? '');
 
 $stats = $pdo->query(
@@ -115,8 +133,26 @@ if ($stats === false) {
 
 $customersTotal = (int) $pdo->query('SELECT COUNT(*) FROM `customers`')->fetchColumn();
 
+$orderStats = $pdo->query(
+    'SELECT
+        COUNT(*) AS total,
+        SUM(`status` = \'pending\') AS pending,
+        COALESCE(SUM(CASE WHEN `status` <> \'cancelled\' THEN `total_price` ELSE 0 END), 0) AS revenue
+     FROM `orders`'
+)->fetch();
+
+if ($orderStats === false) {
+    $orderStats = ['total' => 0, 'pending' => 0, 'revenue' => 0];
+}
+
+$newsletterTotal = (int) $pdo->query(
+    'SELECT COUNT(*) FROM `customers` WHERE `marketing_optin` = 1'
+)->fetchColumn();
+
 $bookings  = [];
 $customers = [];
+$orders    = [];
+$catalog   = [];
 
 if ($view === 'bookings') {
     $sql = 'SELECT b.*, c.`first_name`, c.`last_name`, c.`email`, c.`phone`, c.`country`,
@@ -142,6 +178,65 @@ if ($view === 'bookings') {
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $bookings = $stmt->fetchAll();
+} elseif ($view === 'orders') {
+    $sql = 'SELECT o.*, c.`first_name`, c.`last_name`, c.`email`, c.`phone`
+              FROM `orders` o
+              JOIN `customers` c ON c.`id` = o.`customer_id`
+             WHERE 1 = 1';
+    $params = [];
+
+    if ($statusFilter !== '') {
+        $sql .= ' AND o.`status` = :status';
+        $params[':status'] = $statusFilter;
+    }
+    if ($search !== '') {
+        $sql .= ' AND (c.`last_name` LIKE :q OR c.`first_name` LIKE :q
+                       OR c.`email` LIKE :q OR o.`reference` LIKE :q)';
+        $params[':q'] = '%' . $search . '%';
+    }
+
+    $sql .= ' ORDER BY o.`created_at` DESC LIMIT 200';
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $orders = $stmt->fetchAll();
+
+    // Le righe si caricano in una query sola per tutti gli ordini mostrati:
+    // una query per ordine significherebbe 200 interrogazioni per pagina.
+    if ($orders !== []) {
+        $ids = array_column($orders, 'id');
+        $in  = implode(',', array_fill(0, count($ids), '?'));
+        $itemsStmt = $pdo->prepare(
+            'SELECT `order_id`, `product_name`, `size_label`, `quantity`, `line_total`
+               FROM `order_items` WHERE `order_id` IN (' . $in . ') ORDER BY `id`'
+        );
+        $itemsStmt->execute($ids);
+
+        $itemsByOrder = [];
+        foreach ($itemsStmt->fetchAll() as $item) {
+            $itemsByOrder[(int) $item['order_id']][] = $item;
+        }
+        foreach ($orders as $i => $o) {
+            $orders[$i]['items'] = $itemsByOrder[(int) $o['id']] ?? [];
+        }
+    }
+} elseif ($view === 'catalog') {
+    $catalog = $pdo->query(
+        'SELECT p.`slug`, p.`name`, p.`status` AS product_status, p.`accent`,
+                v.`id` AS variant_id, v.`sku`, v.`size_label`, v.`price`, v.`stock`,
+                v.`status` AS variant_status,
+                COALESCE(s.`sold`, 0) AS sold
+           FROM `products` p
+           LEFT JOIN `product_variants` v ON v.`product_id` = p.`id`
+           LEFT JOIN (
+                SELECT i.`variant_id`, SUM(i.`quantity`) AS sold
+                  FROM `order_items` i
+                  JOIN `orders` o ON o.`id` = i.`order_id`
+                 WHERE o.`status` <> \'cancelled\'
+                 GROUP BY i.`variant_id`
+           ) s ON s.`variant_id` = v.`id`
+          ORDER BY p.`sort_order`, p.`id`, v.`sort_order`, v.`id`'
+    )->fetchAll();
 } else {
     $sql = 'SELECT c.*,
                    COUNT(b.`id`) AS total_bookings,
@@ -189,6 +284,20 @@ $statusLabels = [
     'confirmed' => 'Confermata',
     'cancelled' => 'Annullata',
     'completed' => 'Conclusa',
+];
+
+$orderStatusLabels = [
+    'pending'   => 'In attesa',
+    'confirmed' => 'Confermato',
+    'shipped'   => 'Spedito',
+    'delivered' => 'Consegnato',
+    'cancelled' => 'Annullato',
+];
+
+$paymentLabels = [
+    'unpaid'   => 'Da pagare',
+    'paid'     => 'Pagato',
+    'refunded' => 'Rimborsato',
 ];
 
 // Mantiene i filtri attivi quando un pulsante di stato fa il POST.
@@ -360,35 +469,41 @@ header('Cache-Control: no-store, private');
   <?php endif; ?>
 
   <section class="stats">
-    <div class="stat"><span class="label">Richieste totali</span><div class="value"><?= (int) $stats['total'] ?></div></div>
-    <div class="stat accent"><span class="label">In attesa</span><div class="value"><?= (int) $stats['pending'] ?></div></div>
-    <div class="stat"><span class="label">Confermate</span><div class="value"><?= (int) $stats['confirmed'] ?></div></div>
+    <div class="stat accent"><span class="label">Prenotazioni da evadere</span><div class="value"><?= (int) $stats['pending'] ?></div></div>
+    <div class="stat accent"><span class="label">Ordini da evadere</span><div class="value"><?= (int) $orderStats['pending'] ?></div></div>
     <div class="stat"><span class="label">Notti vendute</span><div class="value"><?= (int) $stats['nights_sold'] ?></div></div>
-    <div class="stat"><span class="label">Valore confermato</span><div class="value"><?= e(money($stats['revenue'])) ?></div></div>
+    <div class="stat"><span class="label">Valore soggiorni</span><div class="value"><?= e(money($stats['revenue'])) ?></div></div>
+    <div class="stat"><span class="label">Valore ordini</span><div class="value"><?= e(money($orderStats['revenue'])) ?></div></div>
     <div class="stat"><span class="label">Clienti</span><div class="value"><?= $customersTotal ?></div></div>
+    <div class="stat"><span class="label">Iscritti Radici</span><div class="value"><?= $newsletterTotal ?></div></div>
   </section>
 
   <nav class="toolbar">
     <a class="tab" href="?view=bookings" <?= $view === 'bookings' ? 'aria-current="page"' : '' ?>>Prenotazioni</a>
+    <a class="tab" href="?view=orders" <?= $view === 'orders' ? 'aria-current="page"' : '' ?>>Ordini</a>
     <a class="tab" href="?view=customers" <?= $view === 'customers' ? 'aria-current="page"' : '' ?>>Clienti</a>
+    <a class="tab" href="?view=catalog" <?= $view === 'catalog' ? 'aria-current="page"' : '' ?>>Catalogo</a>
 
-    <?php if ($view === 'bookings'): ?>
+    <?php if ($view === 'bookings' || $view === 'orders'): ?>
+      <?php $chips = $view === 'orders' ? $orderStatusLabels : $statusLabels; ?>
       <span style="width:1px;height:24px;background:var(--line);margin:0 0.4rem"></span>
-      <a class="chip" href="?view=bookings" <?= $statusFilter === '' ? 'aria-current="true"' : '' ?>>Tutte</a>
-      <?php foreach ($statusLabels as $key => $lbl): ?>
-        <a class="chip" href="?view=bookings&amp;status=<?= e($key) ?>"
+      <a class="chip" href="?view=<?= e($view) ?>" <?= $statusFilter === '' ? 'aria-current="true"' : '' ?>>Tutti</a>
+      <?php foreach ($chips as $key => $lbl): ?>
+        <a class="chip" href="?view=<?= e($view) ?>&amp;status=<?= e($key) ?>"
            <?= $statusFilter === $key ? 'aria-current="true"' : '' ?>><?= e($lbl) ?></a>
       <?php endforeach; ?>
     <?php endif; ?>
 
-    <form class="search" method="get" action="">
-      <input type="hidden" name="view" value="<?= e($view) ?>">
-      <?php if ($statusFilter !== ''): ?>
-        <input type="hidden" name="status" value="<?= e($statusFilter) ?>">
-      <?php endif; ?>
-      <input type="search" name="q" value="<?= e($search) ?>" placeholder="Nome, email, riferimento…" aria-label="Cerca">
-      <button type="submit">Cerca</button>
-    </form>
+    <?php if ($view !== 'catalog'): ?>
+      <form class="search" method="get" action="">
+        <input type="hidden" name="view" value="<?= e($view) ?>">
+        <?php if ($statusFilter !== ''): ?>
+          <input type="hidden" name="status" value="<?= e($statusFilter) ?>">
+        <?php endif; ?>
+        <input type="search" name="q" value="<?= e($search) ?>" placeholder="Nome, email, riferimento…" aria-label="Cerca">
+        <button type="submit">Cerca</button>
+      </form>
+    <?php endif; ?>
   </nav>
 
   <?php if ($view === 'bookings'): ?>
@@ -465,6 +580,162 @@ header('Cache-Control: no-store, private');
       </table>
       <?php endif; ?>
     </div>
+
+  <?php elseif ($view === 'orders'): ?>
+
+    <div class="table-wrap">
+      <?php if ($orders === []): ?>
+        <p class="empty">Nessun ordine con questi filtri.</p>
+      <?php else: ?>
+      <table>
+        <thead>
+          <tr>
+            <th>Riferimento</th><th>Cliente</th><th>Prodotti</th><th>Consegna</th>
+            <th>Totale</th><th>Stato</th><th>Pagamento</th><th>Azioni</th>
+          </tr>
+        </thead>
+        <tbody>
+        <?php foreach ($orders as $o): ?>
+          <tr>
+            <td data-label="Riferimento">
+              <span class="mono strong"><?= e($o['reference']) ?></span><br>
+              <span class="muted"><?= e(day($o['created_at'])) ?></span>
+              <?php if ((int) $o['email_sent'] === 0): ?>
+                <br><span class="muted" title="Email di conferma non inviata">✉ non inviata</span>
+              <?php endif; ?>
+            </td>
+            <td data-label="Cliente">
+              <span class="strong"><?= e($o['first_name'] . ' ' . $o['last_name']) ?></span><br>
+              <a class="link muted" href="mailto:<?= e($o['email']) ?>"><?= e($o['email']) ?></a>
+              <?php if (!empty($o['phone'])): ?>
+                <br><a class="link muted" href="tel:<?= e($o['phone']) ?>"><?= e($o['phone']) ?></a>
+              <?php endif; ?>
+            </td>
+            <td data-label="Prodotti">
+              <?php foreach (($o['items'] ?? []) as $item): ?>
+                <?= (int) $item['quantity'] ?> × <?= e($item['product_name']) ?>
+                <span class="muted"><?= e($item['size_label']) ?></span><br>
+              <?php endforeach; ?>
+            </td>
+            <td data-label="Consegna">
+              <?= $o['delivery'] === 'shipping' ? 'Spedizione' : 'Ritiro' ?>
+              <?php if (!empty($o['shipping_address'])): ?>
+                <br><span class="muted"><?= nl2br(e($o['shipping_address'])) ?></span>
+              <?php endif; ?>
+            </td>
+            <td data-label="Totale">
+              <span class="strong"><?= e(money($o['total_price'])) ?></span>
+              <?php if ((float) $o['shipping_cost'] > 0): ?>
+                <br><span class="muted">di cui <?= e(money($o['shipping_cost'])) ?> spedizione</span>
+              <?php endif; ?>
+            </td>
+            <td data-label="Stato">
+              <span class="badge <?= e($o['status'] === 'delivered' ? 'completed' : $o['status']) ?>">
+                <?= e($orderStatusLabels[$o['status']] ?? $o['status']) ?>
+              </span>
+            </td>
+            <td data-label="Pagamento">
+              <form method="post" action="?<?= e($returnQuery) ?>" class="actions">
+                <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
+                <input type="hidden" name="order_id" value="<?= (int) $o['id'] ?>">
+                <span class="badge <?= $o['payment_status'] === 'paid' ? 'confirmed' : 'pending' ?>">
+                  <?= e($paymentLabels[$o['payment_status']] ?? $o['payment_status']) ?>
+                </span>
+                <?php if ($o['payment_status'] !== 'paid'): ?>
+                  <button type="submit" name="status" value="paid">Segna pagato</button>
+                <?php endif; ?>
+              </form>
+            </td>
+            <td data-label="Azioni">
+              <form method="post" action="?<?= e($returnQuery) ?>" class="actions">
+                <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
+                <input type="hidden" name="order_id" value="<?= (int) $o['id'] ?>">
+                <?php if ($o['status'] === 'pending'): ?>
+                  <button type="submit" name="status" value="confirmed">Conferma</button>
+                <?php endif; ?>
+                <?php if (in_array($o['status'], ['pending', 'confirmed'], true)): ?>
+                  <button type="submit" name="status" value="shipped">Spedito</button>
+                <?php endif; ?>
+                <?php if ($o['status'] === 'shipped'): ?>
+                  <button type="submit" name="status" value="delivered">Consegnato</button>
+                <?php endif; ?>
+                <?php if ($o['status'] !== 'cancelled'): ?>
+                  <button type="submit" name="status" value="cancelled" class="danger"
+                          onclick="return confirm('Annullare l\'ordine <?= e($o['reference']) ?>?')">Annulla</button>
+                <?php endif; ?>
+              </form>
+            </td>
+          </tr>
+          <?php if (!empty($o['customer_message'])): ?>
+            <tr>
+              <td colspan="8" data-label="Messaggio" class="muted" style="padding-top:0;border-top:none">
+                “<?= e($o['customer_message']) ?>”
+              </td>
+            </tr>
+          <?php endif; ?>
+        <?php endforeach; ?>
+        </tbody>
+      </table>
+      <?php endif; ?>
+    </div>
+
+  <?php elseif ($view === 'catalog'): ?>
+
+    <div class="table-wrap">
+      <?php if ($catalog === []): ?>
+        <p class="empty">Catalogo vuoto: importa schema_database.sql.</p>
+      <?php else: ?>
+      <table>
+        <thead>
+          <tr>
+            <th>Prodotto</th><th>Formato</th><th>SKU</th><th>Prezzo</th>
+            <th>Giacenza</th><th>Venduti</th><th>Stato</th><th>Azioni</th>
+          </tr>
+        </thead>
+        <tbody>
+        <?php foreach ($catalog as $row): ?>
+          <tr>
+            <td data-label="Prodotto">
+              <span class="strong" style="color:<?= e($row['accent']) ?>"><?= e($row['name']) ?></span><br>
+              <span class="muted mono"><?= e($row['slug']) ?></span>
+            </td>
+            <td data-label="Formato"><?= e($row['size_label'] ?? '—') ?></td>
+            <td data-label="SKU"><span class="mono"><?= e($row['sku'] ?? '—') ?></span></td>
+            <td data-label="Prezzo"><span class="strong"><?= $row['price'] !== null ? e(money($row['price'])) : '—' ?></span></td>
+            <td data-label="Giacenza">
+              <?= $row['stock'] === null ? '<span class="muted">non tracciata</span>' : (int) $row['stock'] ?>
+            </td>
+            <td data-label="Venduti"><?= (int) $row['sold'] ?></td>
+            <td data-label="Stato">
+              <span class="badge <?= ($row['variant_status'] ?? '') === 'available' ? 'confirmed' : 'cancelled' ?>">
+                <?= ($row['variant_status'] ?? '') === 'available' ? 'disponibile' : e($row['variant_status'] ?? '—') ?>
+              </span>
+            </td>
+            <td data-label="Azioni">
+              <?php if (!empty($row['variant_id'])): ?>
+              <form method="post" action="?<?= e($returnQuery) ?>" class="actions">
+                <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
+                <input type="hidden" name="variant_id" value="<?= (int) $row['variant_id'] ?>">
+                <?php if ($row['variant_status'] === 'available'): ?>
+                  <button type="submit" name="status" value="sold_out">Segna esaurito</button>
+                <?php else: ?>
+                  <button type="submit" name="status" value="available">Rimetti in vendita</button>
+                <?php endif; ?>
+              </form>
+              <?php endif; ?>
+            </td>
+          </tr>
+        <?php endforeach; ?>
+        </tbody>
+      </table>
+      <?php endif; ?>
+    </div>
+
+    <p class="muted" style="margin-top:1.5rem">
+      I prezzi si cambiano in <span class="mono">product_variants</span> da phpMyAdmin.
+      Il sito li legge da <span class="mono">api/catalog.php</span>, quindi la modifica
+      compare online entro mezz'ora senza ripubblicare nulla.
+    </p>
 
   <?php else: ?>
 

@@ -156,3 +156,152 @@ ON DUPLICATE KEY UPDATE
 DELETE FROM `rooms`
  WHERE `name` = 'Camera Principal Humus'
    AND `id` NOT IN (SELECT DISTINCT `room_id` FROM (SELECT `room_id` FROM `bookings`) AS b);
+
+
+-- ============================================================
+-- CATALOGO MIELE E ORDINI
+-- ============================================================
+
+-- ------------------------------------------------------------
+-- 5. PRODOTTI (i mieli del fondo)
+--
+-- Un prodotto è il miele; i formati (250 g, 500 g, 1 kg) stanno in
+-- `product_variants` perché ognuno ha prezzo e giacenza propri.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `products` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `slug` VARCHAR(64) NOT NULL UNIQUE,        -- identificatore stabile usato dal sito
+  `name` VARCHAR(120) NOT NULL,
+  `name_en` VARCHAR(120) NOT NULL DEFAULT '',
+  `tagline` VARCHAR(190),
+  `tagline_en` VARCHAR(190),
+  `note` TEXT,
+  `note_en` TEXT,
+  `category` VARCHAR(50) NOT NULL DEFAULT 'mieli',
+  `accent` CHAR(7) NOT NULL DEFAULT '#8a5a2b',  -- colore usato dalla scheda prodotto
+  `image` VARCHAR(190),                          -- file in public/, es. label_castagno.png
+  `sort_order` SMALLINT NOT NULL DEFAULT 0,
+  `status` ENUM('available', 'sold_out', 'hidden') NOT NULL DEFAULT 'available',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  KEY `idx_products_status` (`status`, `sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- 6. FORMATI / PREZZI
+--
+-- `stock` a NULL significa "non tracciato": il vasetto si vende comunque.
+-- Metti un numero solo quando vuoi che il sito smetta di accettare ordini
+-- una volta esaurito.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `product_variants` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `product_id` INT NOT NULL,
+  `sku` VARCHAR(64) NOT NULL UNIQUE,         -- es. castagno-250g
+  `size_label` VARCHAR(40) NOT NULL,         -- es. "250 g"
+  `price` DECIMAL(10,2) NOT NULL,
+  `stock` INT DEFAULT NULL,
+  `sort_order` SMALLINT NOT NULL DEFAULT 0,
+  `status` ENUM('available', 'sold_out', 'hidden') NOT NULL DEFAULT 'available',
+  FOREIGN KEY (`product_id`) REFERENCES `products`(`id`) ON DELETE CASCADE,
+  KEY `idx_variants_product` (`product_id`, `sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- 7. ORDINI
+--
+-- Stesso principio delle prenotazioni: gli importi sono congelati al momento
+-- dell'ordine, così un ritocco al listino non riscrive gli ordini passati.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `orders` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `reference` VARCHAR(20) NOT NULL UNIQUE,   -- es. HS-ORD-4F7A2C
+  `customer_id` INT NOT NULL,
+  `items_total` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  `shipping_cost` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  `total_price` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  -- 'pickup' = ritiro in azienda, 'shipping' = spedizione all'indirizzo indicato
+  `delivery` ENUM('pickup', 'shipping') NOT NULL DEFAULT 'pickup',
+  `shipping_address` TEXT,
+  `status` ENUM('pending', 'confirmed', 'shipped', 'delivered', 'cancelled') NOT NULL DEFAULT 'pending',
+  `payment_status` ENUM('unpaid', 'paid', 'refunded') NOT NULL DEFAULT 'unpaid',
+  `customer_message` TEXT,
+  `internal_notes` TEXT,
+  `locale` CHAR(2) NOT NULL DEFAULT 'it',
+  `email_sent` TINYINT(1) NOT NULL DEFAULT 0,
+  `ip_address` VARBINARY(16),
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`) ON DELETE CASCADE,
+  KEY `idx_orders_status` (`status`, `created_at`),
+  KEY `idx_orders_throttle` (`ip_address`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- 8. RIGHE D'ORDINE
+--
+-- `product_name` e `size_label` sono copiati qui apposta: se un giorno un
+-- prodotto viene rinominato o tolto, l'ordine resta leggibile com'era.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `order_items` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `order_id` INT NOT NULL,
+  `variant_id` INT,
+  `product_name` VARCHAR(120) NOT NULL,
+  `size_label` VARCHAR(40) NOT NULL,
+  `unit_price` DECIMAL(10,2) NOT NULL,
+  `quantity` SMALLINT UNSIGNED NOT NULL DEFAULT 1,
+  `line_total` DECIMAL(10,2) NOT NULL,
+  FOREIGN KEY (`order_id`) REFERENCES `orders`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`variant_id`) REFERENCES `product_variants`(`id`) ON DELETE SET NULL,
+  KEY `idx_items_order` (`order_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- 9. CATALOGO MIELE
+--
+-- [Fatto verificato] Prezzi e descrizioni presi dal sito pubblicato.
+-- Per ritoccare un prezzo:
+--   UPDATE `product_variants` SET `price` = 5.00 WHERE `sku` = 'castagno-250g';
+-- Per segnalare esaurito:
+--   UPDATE `product_variants` SET `status` = 'sold_out' WHERE `sku` = 'castagno-1kg';
+-- ------------------------------------------------------------
+INSERT INTO `products`
+  (`slug`, `name`, `name_en`, `tagline`, `tagline_en`, `note`, `note_en`,
+   `category`, `accent`, `image`, `sort_order`, `status`)
+VALUES
+  ('castagno', 'Miele di Castagno', 'Chestnut Honey',
+   'Delle colline dell''Alta Val Petronio', 'From the hills of the Alta Val Petronio',
+   'Estratto a freddo, non pastorizzato, integrale. Così come lo fanno le api.',
+   'Cold-extracted, unpasteurised, whole. Just as the bees make it.',
+   'mieli', '#8a5a2b', 'label_castagno.png', 10, 'available'),
+
+  ('millefiori', 'Miele Millefiori', 'Wildflower Honey',
+   'Delle colline dell''Alta Val Petronio', 'From the hills of the Alta Val Petronio',
+   'Piantate, curate, coltivate e raccolte a mano. Dentro il vasetto, nettare di fiori selvatici.',
+   'Planted, tended, grown and hand-harvested. Inside the jar, nectar of wildflowers.',
+   'mieli', '#5a4a2b', 'label_millefiori.png', 20, 'available')
+ON DUPLICATE KEY UPDATE
+  `name`       = VALUES(`name`),
+  `name_en`    = VALUES(`name_en`),
+  `tagline`    = VALUES(`tagline`),
+  `note`       = VALUES(`note`),
+  `note_en`    = VALUES(`note_en`),
+  `accent`     = VALUES(`accent`),
+  `image`      = VALUES(`image`),
+  `sort_order` = VALUES(`sort_order`);
+
+INSERT INTO `product_variants` (`product_id`, `sku`, `size_label`, `price`, `sort_order`)
+SELECT p.`id`, v.`sku`, v.`size_label`, v.`price`, v.`sort_order`
+  FROM (
+    SELECT 'castagno'   AS slug, 'castagno-250g'   AS sku, '250 g' AS size_label,  4.50 AS price, 10 AS sort_order
+    UNION ALL SELECT 'castagno',   'castagno-500g',   '500 g',  7.00, 20
+    UNION ALL SELECT 'castagno',   'castagno-1kg',    '1 kg',  13.00, 30
+    UNION ALL SELECT 'millefiori', 'millefiori-250g', '250 g',  5.00, 10
+    UNION ALL SELECT 'millefiori', 'millefiori-500g', '500 g',  7.50, 20
+    UNION ALL SELECT 'millefiori', 'millefiori-1kg',  '1 kg',  14.00, 30
+  ) AS v
+  JOIN `products` p ON p.`slug` = v.slug
+ON DUPLICATE KEY UPDATE
+  `size_label` = VALUES(`size_label`),
+  `price`      = VALUES(`price`),
+  `sort_order` = VALUES(`sort_order`);

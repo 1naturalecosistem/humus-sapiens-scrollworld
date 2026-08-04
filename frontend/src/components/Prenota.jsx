@@ -1,19 +1,13 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useLang } from "../lib/i18n";
 import { CONTACT, CONTENT } from "../lib/content";
 import { Reveal, RevealWords } from "./Reveal";
+import { ENDPOINTS, postJSON, fetchCatalog } from "../lib/api";
 
-// Endpoint dell'API su Register.it. Il sito è servito da GitHub Pages, quindi
-// ogni chiamata è cross-origin e dipende dagli header CORS di api/db.php.
-// Override in locale con REACT_APP_BOOKING_API nel file .env.
-const BOOKING_API =
-  process.env.REACT_APP_BOOKING_API || "http://onenaturalecosistem.com/api/booking.php";
-
-// Specchio del catalogo in tabella `rooms`. Serve solo a popolare la select e
-// a mostrare la stima: il prezzo che vale è quello che ricalcola il server.
-// Se cambi una tariffa nel DB, aggiorna anche qui — o il preventivo mostrato
-// non corrisponderà a quello confermato via email.
-const ROOMS = [
+// Rete di sicurezza se api/catalog.php non risponde: la sezione si disegna
+// comunque. Il listino vero vive nella tabella `rooms` del gestionale, e il
+// totale lo ricalcola sempre il server.
+const FALLBACK_ROOMS = [
   { slug: "villa-levante", it: "Villa Levante", en: "Villa Levante", price: 300, capacity: 9, minNights: 2, available: true },
   { slug: "villa-ponente", it: "Villa Ponente", en: "Villa Ponente", price: 300, capacity: 9, minNights: 2, available: true },
   { slug: "piazzola-food-forest", it: "Piazzola nella Food Forest", en: "Food Forest Pitch", price: 0, capacity: 4, minNights: 1, available: false },
@@ -68,17 +62,41 @@ export default function Prenota() {
   const t = CONTENT[lang].prenota;
   const f = t.form;
 
+  const [rooms, setRooms] = useState(FALLBACK_ROOMS);
   const [values, setValues] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState("idle"); // idle | sending | success | error
   const [feedback, setFeedback] = useState(null);
   const [reference, setReference] = useState("");
 
+  // Tariffe e capienze dal gestionale: cambiarle in phpMyAdmin le fa comparire
+  // sul sito senza ripubblicare nulla.
+  useEffect(() => {
+    let cancelled = false;
+    fetchCatalog().then((data) => {
+      if (cancelled || !data || !Array.isArray(data.rooms) || data.rooms.length === 0) return;
+      setRooms(
+        data.rooms.map((r) => ({
+          slug: r.slug,
+          it: r.name,
+          en: r.name_en,
+          price: r.price,
+          capacity: r.capacity,
+          minNights: r.min_nights,
+          available: r.available,
+        }))
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const mailto = `mailto:${CONTACT.email}?subject=${encodeURIComponent(
     lang === "it" ? "Prenotazione soggiorno — Humus Sapiens" : "Stay booking — Humus Sapiens"
   )}`;
 
-  const room = useMemo(() => ROOMS.find((r) => r.slug === values.room) || null, [values.room]);
+  const room = useMemo(() => rooms.find((r) => r.slug === values.room) || null, [values.room, rooms]);
   const nights = nightsBetween(values.check_in, values.check_out);
   const guests = Number(values.adults || 0) + Number(values.children || 0);
   const total = room && nights > 0 ? room.price * nights : 0;
@@ -135,37 +153,24 @@ export default function Prenota() {
     setStatus("sending");
     setErrors({});
 
-    // Si annulla la richiesta invece di lasciare il pulsante bloccato per
-    // sempre quando la rete non risponde.
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 20000);
+    const result = await postJSON(ENDPOINTS.booking, { ...values, locale: lang });
 
-    try {
-      const response = await fetch(BOOKING_API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ ...values, locale: lang }),
-        signal: controller.signal,
-      });
-
-      const data = await response.json().catch(() => ({ success: false }));
-
-      if (response.ok && data.success) {
-        setReference(data.reference || "");
-        setValues(EMPTY);
-        setStatus("success");
-        return;
-      }
-
-      if (data.fields) setErrors(data.fields);
-      setStatus("error");
-      setFeedback(data.error || f.errorGeneric);
-    } catch (error) {
-      setStatus("error");
-      setFeedback(error.name === "AbortError" ? f.errorTimeout : f.errorNetwork);
-    } finally {
-      clearTimeout(timer);
+    if (result.ok) {
+      setReference(result.data.reference || "");
+      setValues(EMPTY);
+      setStatus("success");
+      return;
     }
+
+    if (result.networkError) {
+      setStatus("error");
+      setFeedback(result.timedOut ? f.errorTimeout : f.errorNetwork);
+      return;
+    }
+
+    if (result.data.fields) setErrors(result.data.fields);
+    setStatus("error");
+    setFeedback(result.data.error || f.errorGeneric);
   }
 
   const minCheckIn = todayISO();
@@ -244,7 +249,7 @@ export default function Prenota() {
                       onChange={(ev) => setField("room", ev.target.value)}
                     >
                       <option value="">{f.roomPlaceholder}</option>
-                      {ROOMS.map((r) => (
+                      {rooms.map((r) => (
                         <option key={r.slug} value={r.slug} disabled={!r.available}>
                           {r[lang]}
                           {r.available ? ` — € ${r.price}/${lang === "it" ? "notte" : "night"}` : ` — ${f.comingSoon}`}

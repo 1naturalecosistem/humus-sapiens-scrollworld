@@ -5,6 +5,7 @@ import { ArrowUpRight, X, Clock } from "lucide-react";
 import { useLang } from "../lib/i18n";
 import { CONTENT, ARTICLES, PILLARS, CONTACT } from "../lib/content";
 import { Reveal, RevealWords } from "./Reveal";
+import { ENDPOINTS, postJSON } from "../lib/api";
 
 function stripFrontmatter(md) {
   let out = md;
@@ -98,19 +99,49 @@ export default function Blog() {
   const [active, setActive] = useState(null);
   const [email, setEmail] = useState("");
   const [filter, setFilter] = useState("all");
+  const [subscribeState, setSubscribeState] = useState("idle"); // idle | sending | success | error
+  const [subscribeMsg, setSubscribeMsg] = useState(null);
 
   // pillars present, in first-seen order
   const pillarKeys = ARTICLES.reduce((acc, a) => (acc.includes(a.pillar) ? acc : [...acc, a.pillar]), []);
   const filtered = filter === "all" ? ARTICLES : ARTICLES.filter((a) => a.pillar === filter);
 
+  // L'iscrizione va nel gestionale (customers.marketing_optin), non più in un
+  // mailto: così l'elenco degli iscritti è una lista vera e non una cartella
+  // di posta, e chi si iscrive non deve avere un client email configurato.
   const subscribe = useCallback(
-    (e) => {
+    async (e) => {
       e.preventDefault();
-      const subject = encodeURIComponent("Iscrizione newsletter Radici");
-      const body = encodeURIComponent(`Vorrei iscrivermi a Radici.\nEmail: ${email}`);
-      window.location.href = `mailto:${CONTACT.email}?subject=${subject}&body=${body}`;
+      if (subscribeState === "sending") return;
+
+      setSubscribeState("sending");
+      setSubscribeMsg(null);
+
+      const result = await postJSON(ENDPOINTS.newsletter, { email: email.trim(), locale: lang });
+
+      if (result.ok) {
+        setEmail("");
+        setSubscribeState("success");
+        setSubscribeMsg(result.data.message || (lang === "it" ? "Iscrizione registrata." : "You are subscribed."));
+        return;
+      }
+
+      setSubscribeState("error");
+      if (result.networkError) {
+        setSubscribeMsg(
+          lang === "it"
+            ? `Connessione non riuscita. Scrivici a ${CONTACT.email}.`
+            : `Connection failed. Write to ${CONTACT.email}.`
+        );
+        return;
+      }
+      setSubscribeMsg(
+        (result.data.fields && result.data.fields.email) ||
+          result.data.error ||
+          (lang === "it" ? "Iscrizione non riuscita." : "Subscription failed.")
+      );
     },
-    [email]
+    [email, lang, subscribeState]
   );
 
   return (
@@ -201,24 +232,41 @@ export default function Blog() {
               <div className="font-display text-3xl md:text-4xl mb-3">{t.newsletterTitle}</div>
               <p className="font-body text-[#F5F3E9]/70">{t.newsletterNote}</p>
             </div>
-            <form onSubmit={subscribe} className="flex flex-col sm:flex-row gap-3 w-full md:w-auto md:min-w-[420px]">
-              <input
-                data-testid="newsletter-email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={t.emailPlaceholder}
-                className="flex-1 bg-transparent border border-[#F5F3E9]/30 px-5 py-4 font-body text-[#F5F3E9] placeholder-[#F5F3E9]/40 focus:outline-none focus:border-[#D48924] transition-colors"
-              />
-              <button
-                data-testid="newsletter-subscribe"
-                type="submit"
-                className="font-mono-label text-xs tracking-label px-8 py-4 bg-[#D48924] text-[#1A3626] hover:bg-[#F5F3E9] transition-colors whitespace-nowrap"
-              >
-                {t.subscribe}
-              </button>
-            </form>
+            <div className="w-full md:w-auto md:min-w-[420px]">
+              <form onSubmit={subscribe} className="flex flex-col sm:flex-row gap-3">
+                <input
+                  data-testid="newsletter-email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={t.emailPlaceholder}
+                  className="flex-1 bg-transparent border border-[#F5F3E9]/30 px-5 py-4 font-body text-[#F5F3E9] placeholder-[#F5F3E9]/40 focus:outline-none focus:border-[#D48924] transition-colors"
+                />
+                <button
+                  data-testid="newsletter-subscribe"
+                  type="submit"
+                  disabled={subscribeState === "sending"}
+                  className="font-mono-label text-xs tracking-label px-8 py-4 bg-[#D48924] text-[#1A3626] hover:bg-[#F5F3E9] transition-colors whitespace-nowrap disabled:opacity-60"
+                >
+                  {subscribeState === "sending"
+                    ? (lang === "it" ? "Invio…" : "Sending…")
+                    : t.subscribe}
+                </button>
+              </form>
+
+              {subscribeMsg ? (
+                <p
+                  role="status"
+                  data-testid="newsletter-feedback"
+                  className={`mt-4 font-body text-sm ${
+                    subscribeState === "success" ? "text-[#D3D9C9]" : "text-[#f0b8ae]"
+                  }`}
+                >
+                  {subscribeMsg}
+                </p>
+              ) : null}
+            </div>
           </div>
         </Reveal>
       </div>
