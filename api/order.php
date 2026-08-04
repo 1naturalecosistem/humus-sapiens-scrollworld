@@ -470,7 +470,7 @@ Telefono: {$phone}
 {$message}
 
 Gestisci l'ordine:
-http://onenaturalecosistem.com/crm/dashboard.php?view=orders
+https://onenaturalecosistem.com/crm/dashboard.php?view=orders
 TXT;
 
 $headersToStaff = implode("\r\n", [

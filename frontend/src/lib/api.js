@@ -3,9 +3,13 @@
 // Il sito è servito da GitHub Pages e l'API da un altro host: ogni chiamata è
 // cross-origin e dipende dagli header CORS di api/db.php.
 // In locale si punta altrove con REACT_APP_API_BASE nel file .env.
-
+//
+// HTTPS non è un vezzo: onenaturalecosistem.com risponde 301 sulle richieste
+// in chiaro, e un redirect sul pre-flight CORS è un errore di rete per il
+// browser — non lo segue. Con http:// qui, ogni invio di form fallirebbe
+// prima ancora di partire.
 const API_BASE =
-  process.env.REACT_APP_API_BASE || "http://onenaturalecosistem.com/api";
+  process.env.REACT_APP_API_BASE || "https://onenaturalecosistem.com/api";
 
 export const ENDPOINTS = {
   booking: `${API_BASE}/booking.php`,

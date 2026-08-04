@@ -465,7 +465,7 @@ Lingua:   {$locale}
 {$message}
 
 Gestisci la richiesta:
-http://onenaturalecosistem.com/crm/dashboard.php
+https://onenaturalecosistem.com/crm/dashboard.php
 TXT;
 
 $headersToStaff = implode("\r\n", [
