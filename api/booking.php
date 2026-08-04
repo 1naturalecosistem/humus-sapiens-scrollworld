@@ -1,68 +1,57 @@
 <?php
-declare(strict_types=1);
+// api/booking.php — POST /api/booking.php
+//
+// Riceve la richiesta di prenotazione dal form del sito, crea o aggiorna il
+// cliente, verifica la disponibilità, calcola il prezzo lato server, salva la
+// prenotazione e invia due email: conferma all'ospite, notifica all'azienda.
+//
+// Corpo della richiesta (application/json):
+// {
+//   "first_name": "Mario", "last_name": "Rossi",
+//   "email": "mario@example.com", "phone": "+39 333 1234567",
+//   "city": "Genova", "country": "Italia", "locale": "it",
+//   "room": "villa-levante",
+//   "check_in": "2026-08-14", "check_out": "2026-08-17",
+//   "adults": 2, "children": 1,
+//   "message": "Arriviamo in tarda serata",
+//   "privacy": true, "marketing": false,
+//   "website": ""            // honeypot: deve restare vuoto
+// }
+//
+// 201 → { success, reference, status, price: {...} }
+// 4xx → { success: false, error, fields? }
 
-/**
- * Humus Sapiens — POST /api/booking.php
- *
- * Accepts a JSON booking request from the static frontend, upserts the
- * customer, checks availability, prices the stay server-side and stores the
- * booking, then sends a confirmation to the guest and a notification to the
- * farm.
- *
- * Request body (application/json):
- * {
- *   "first_name": "Mario",  "last_name": "Rossi",
- *   "email": "mario@example.com",  "phone": "+39 333 1234567",
- *   "country": "IT",  "city": "Genova",  "locale": "it",
- *   "room": "villa-levante",
- *   "check_in": "2026-08-14",  "check_out": "2026-08-17",
- *   "adults": 2,  "children": 1,
- *   "message": "Arriviamo in tarda serata",
- *   "privacy": true,  "marketing": false,
- *   "website": ""              // honeypot: must stay empty
- * }
- *
- * 201 → { success, reference, status, price: {...}, room: {...} }
- * 4xx → { success: false, error, fields? }
- */
+require_once __DIR__ . '/db.php';   // gestisce CORS e pre-flight OPTIONS
 
-require_once __DIR__ . '/db.php';
-
-// CORS first: an error returned without these headers is unreadable to the browser.
-hs_cors(['POST', 'OPTIONS']);
-
-if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Allow: POST, OPTIONS');
     hs_error('Metodo non consentito. Usa POST.', 405);
 }
 
-// ---------------------------------------------------------------------
-// Tunables
-// ---------------------------------------------------------------------
-const HS_MAX_ADVANCE_DAYS   = 730; // no requests more than 2 years out
-const HS_THROTTLE_MAX       = 5;   // bookings per IP…
-const HS_THROTTLE_WINDOW    = 3600; // …per this many seconds
+define('HS_MAX_ADVANCE_DAYS', 730);  // niente richieste oltre 2 anni
+define('HS_THROTTLE_MAX', 5);        // massimo N richieste per IP…
+define('HS_THROTTLE_WINDOW', 3600);  // …in questa finestra di secondi
 
 
 // ---------------------------------------------------------------------
-// Small validation helpers
+// Helper di validazione
 // ---------------------------------------------------------------------
 
-/** Trim, collapse whitespace and strip control characters from user text. */
-function hs_clean(mixed $value, int $maxLength = 255): string
+/** Ripulisce il testo inviato dall'utente: spazi, caratteri di controllo, lunghezza. */
+function hs_clean($value, int $maxLength = 255): string
 {
     if (!is_scalar($value)) {
         return '';
     }
 
-    $text = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', (string) $value) ?? '';
-    $text = trim(preg_replace('/[ \t]+/u', ' ', $text) ?? '');
+    $text = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', (string) $value);
+    $text = trim(preg_replace('/[ \t]+/u', ' ', (string) $text));
 
     return mb_substr($text, 0, $maxLength);
 }
 
-/** Parse a strict Y-m-d date. Returns null when the string is not a real date. */
-function hs_parse_date(mixed $value): ?DateTimeImmutable
+/** Legge una data in formato Y-m-d. Restituisce null se non è una data reale. */
+function hs_parse_date($value): ?DateTimeImmutable
 {
     if (!is_string($value) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
         return null;
@@ -71,7 +60,7 @@ function hs_parse_date(mixed $value): ?DateTimeImmutable
     $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value, new DateTimeZone('Europe/Rome'));
     $errors = DateTimeImmutable::getLastErrors();
 
-    // createFromFormat accepts 2026-02-31 and rolls it over to March; reject that.
+    // createFromFormat accetta 2026-02-31 e lo trasforma in marzo: va rifiutato.
     if ($date === false || ($errors && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))) {
         return null;
     }
@@ -79,23 +68,24 @@ function hs_parse_date(mixed $value): ?DateTimeImmutable
     return $date;
 }
 
-/** Cast to int inside [min, max]; returns null when out of range or not numeric. */
-function hs_int(mixed $value, int $min, int $max): ?int
+/** Converte in intero dentro l'intervallo [min, max]; null se fuori range. */
+function hs_int($value, int $min, int $max): ?int
 {
     if (is_bool($value) || !is_numeric($value)) {
         return null;
     }
 
     $n = (int) $value;
-
     return ($n < $min || $n > $max) ? null : $n;
 }
 
-/** Encode a mail header value as RFC 2047 when it is not plain ASCII. */
+/**
+ * Prepara un valore da mettere in un header email.
+ * Il str_replace su CR/LF è la parte importante: senza, un nome costruito ad
+ * arte potrebbe aggiungere header arbitrari (Bcc, Content-Type) al messaggio.
+ */
 function hs_mime_header(string $text): string
 {
-    // Header injection guard: a raw CR/LF here would let a crafted name append
-    // arbitrary headers (Bcc, Content-Type) to the outgoing message.
     $text = str_replace(["\r", "\n", "\0"], ' ', $text);
 
     return preg_match('/^[\x20-\x7E]*$/', $text) === 1
@@ -103,7 +93,7 @@ function hs_mime_header(string $text): string
         : '=?UTF-8?B?' . base64_encode($text) . '?=';
 }
 
-/** Format an amount the Italian way: 1.234,50 */
+/** Formatta un importo all'italiana: 1.234,50 */
 function hs_money(float $amount): string
 {
     return number_format($amount, 2, ',', '.');
@@ -111,23 +101,23 @@ function hs_money(float $amount): string
 
 
 // ---------------------------------------------------------------------
-// 1. Read and validate the payload
+// 1. Lettura e validazione dei dati
 // ---------------------------------------------------------------------
 $input  = hs_json_body();
 $fields = [];
 
-// Honeypot: a hidden input no human ever fills. Answer 200 so the bot sees
-// success and does not retry with a different shape.
+// Honeypot: campo nascosto che nessun umano compila. Si risponde 200 così il
+// bot crede di aver funzionato e non riprova con un'altra forma.
 if (hs_clean($input['website'] ?? '') !== '') {
     hs_json(['success' => true, 'reference' => 'HS-0000-000000', 'status' => 'pending'], 200);
 }
 
-$firstName = hs_clean($input['first_name'] ?? '', 80);
-$lastName  = hs_clean($input['last_name'] ?? '', 80);
-$email     = mb_strtolower(hs_clean($input['email'] ?? '', 190));
-$phone     = hs_clean($input['phone'] ?? '', 32);
-$city      = hs_clean($input['city'] ?? '', 120);
-$country   = strtoupper(hs_clean($input['country'] ?? 'IT', 2));
+$firstName = hs_clean($input['first_name'] ?? '', 100);
+$lastName  = hs_clean($input['last_name'] ?? '', 100);
+$email     = mb_strtolower(hs_clean($input['email'] ?? '', 150));
+$phone     = hs_clean($input['phone'] ?? '', 50);
+$city      = hs_clean($input['city'] ?? '', 100);
+$country   = hs_clean($input['country'] ?? 'Italia', 100);
 $locale    = in_array(($input['locale'] ?? 'it'), ['it', 'en'], true) ? (string) $input['locale'] : 'it';
 $roomSlug  = hs_clean($input['room'] ?? '', 64);
 $message   = hs_clean($input['message'] ?? '', 2000);
@@ -143,11 +133,11 @@ if (mb_strlen($lastName) < 2) {
 if ($email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
     $fields['email'] = 'Inserisci un indirizzo email valido.';
 }
-if ($phone !== '' && preg_match('/^[0-9+().\s-]{6,32}$/', $phone) !== 1) {
+if ($phone !== '' && !preg_match('/^[0-9+().\s-]{6,50}$/', $phone)) {
     $fields['phone'] = 'Numero di telefono non valido.';
 }
-if (preg_match('/^[A-Z]{2}$/', $country) !== 1) {
-    $country = 'IT';
+if ($country === '') {
+    $country = 'Italia';
 }
 if ($roomSlug === '') {
     $fields['room'] = 'Scegli una sistemazione.';
@@ -188,29 +178,26 @@ if ($fields !== []) {
     hs_error('Alcuni dati non sono validi.', 422, $fields);
 }
 
-/** @var DateTimeImmutable $checkIn */
-/** @var DateTimeImmutable $checkOut */
-/** @var int $adults */
-/** @var int $children */
 $nights = (int) $checkIn->diff($checkOut)->days;
 $guests = $adults + $children;
 
 $pdo = hs_db();
 $ip  = hs_client_ip_binary();
 
+
 // ---------------------------------------------------------------------
-// 2. Throttle by IP — cheap abuse brake before we touch anything else
+// 2. Freno anti-abuso per IP
 // ---------------------------------------------------------------------
 if ($ip !== null) {
-    // The interval is a compile-time constant, not user input, so interpolating
-    // the cast integer is safe — and it sidesteps drivers that refuse a
-    // placeholder inside an INTERVAL expression.
+    // La finestra è una costante del codice, non un dato dell'utente: si può
+    // interpolare come intero, e così si evitano i driver che rifiutano un
+    // segnaposto dentro un'espressione INTERVAL.
     $throttle = $pdo->prepare(sprintf(
-        'SELECT COUNT(*) FROM bookings
-          WHERE ip_address = :ip AND created_at > (NOW() - INTERVAL %d SECOND)',
+        'SELECT COUNT(*) FROM `bookings`
+          WHERE `ip_address` = :ip AND `created_at` > (NOW() - INTERVAL %d SECOND)',
         (int) HS_THROTTLE_WINDOW
     ));
-    $throttle->bindValue(':ip', $ip, PDO::PARAM_STR); // packed binary; nulls survive the wire protocol
+    $throttle->bindValue(':ip', $ip, PDO::PARAM_STR);
     $throttle->execute();
 
     if ((int) $throttle->fetchColumn() >= HS_THROTTLE_MAX) {
@@ -219,52 +206,58 @@ if ($ip !== null) {
     }
 }
 
+
 // ---------------------------------------------------------------------
-// 3. Transaction: price, availability, customer, booking
+// 3. Transazione: prezzo, disponibilità, cliente, prenotazione
 // ---------------------------------------------------------------------
 try {
     $pdo->beginTransaction();
 
-    // Lock the room row: prevents two concurrent requests from both reading
-    // "1 unit free" and both booking it.
-    $stmt = $pdo->prepare('SELECT * FROM rooms WHERE slug = :slug AND is_active = 1 FOR UPDATE');
+    // FOR UPDATE blocca la riga della struttura: due richieste simultanee non
+    // possono leggere entrambe "libero" e prenotare entrambe la stessa unità.
+    $stmt = $pdo->prepare(
+        'SELECT * FROM `rooms` WHERE `slug` = :slug AND `status` = \'available\' FOR UPDATE'
+    );
     $stmt->execute([':slug' => $roomSlug]);
     $room = $stmt->fetch();
 
     if ($room === false) {
         $pdo->rollBack();
-        hs_error('Sistemazione non disponibile.', 422, ['room' => 'Scegli una sistemazione valida.']);
+        hs_error('Sistemazione non disponibile.', 422, [
+            'room' => 'Questa sistemazione non è prenotabile online al momento.',
+        ]);
     }
 
-    // --- Business rules ------------------------------------------------
-    if ($guests > (int) $room['max_guests']) {
+    // --- Regole della struttura ---------------------------------------
+    if ($guests > (int) $room['capacity']) {
         $pdo->rollBack();
         hs_error('Numero di ospiti superiore alla capienza.', 422, [
-            'adults' => sprintf('Massimo %d ospiti per %s.', (int) $room['max_guests'], $room['name_it']),
+            'adults' => sprintf('Massimo %d ospiti per %s.', (int) $room['capacity'], $room['name']),
         ]);
     }
     if ($nights < (int) $room['min_nights']) {
         $pdo->rollBack();
         hs_error('Soggiorno troppo breve.', 422, [
-            'check_out' => sprintf('Minimo %d notti per %s.', (int) $room['min_nights'], $room['name_it']),
+            'check_out' => sprintf('Minimo %d notti per %s.', (int) $room['min_nights'], $room['name']),
         ]);
     }
     if ($nights > (int) $room['max_nights']) {
         $pdo->rollBack();
         hs_error('Soggiorno troppo lungo.', 422, [
-            'check_out' => sprintf('Massimo %d notti per %s.', (int) $room['max_nights'], $room['name_it']),
+            'check_out' => sprintf('Massimo %d notti per %s.', (int) $room['max_nights'], $room['name']),
         ]);
     }
 
-    // --- Availability --------------------------------------------------
-    // Two stays overlap when each starts before the other ends. Same-day
-    // turnover (check-out == check-in) is not an overlap, hence the strict <.
+    // --- Disponibilità -------------------------------------------------
+    // Due soggiorni si sovrappongono quando ciascuno inizia prima che l'altro
+    // finisca. Il cambio nello stesso giorno (partenza = arrivo) non è una
+    // sovrapposizione: per questo i confronti sono stretti.
     $overlap = $pdo->prepare(
-        'SELECT COUNT(*) FROM bookings
-          WHERE room_id = :room_id
-            AND status IN (\'pending\', \'confirmed\')
-            AND check_in < :check_out
-            AND check_out > :check_in'
+        'SELECT COUNT(*) FROM `bookings`
+          WHERE `room_id` = :room_id
+            AND `status` IN (\'pending\', \'confirmed\')
+            AND `check_in` < :check_out
+            AND `check_out` > :check_in'
     );
     $overlap->execute([
         ':room_id'   => (int) $room['id'],
@@ -279,88 +272,75 @@ try {
         ]);
     }
 
-    // --- Price (server-side; the client estimate is never trusted) ------
-    $unitPrice       = (float) $room['base_price'];
-    $extraGuestPrice = (float) $room['extra_guest_price'];
-    $extraGuests     = max(0, $guests - (int) $room['included_guests']);
+    // --- Prezzo (calcolato qui: quello del browser non fa testo) --------
+    $unitPrice = (float) $room['price_per_night'];
+    $total     = round($unitPrice * $nights, 2);
 
-    $accommodation = ($unitPrice + $extraGuests * $extraGuestPrice) * $nights;
-    $cleaningFee   = (float) $room['cleaning_fee'];
-    $touristTax    = (float) $room['tourist_tax'] * $adults * $nights; // minors are exempt
-    $total         = round($accommodation + $cleaningFee + $touristTax, 2);
-
-    // --- Customer upsert -----------------------------------------------
-    $find = $pdo->prepare('SELECT id FROM customers WHERE email = :email FOR UPDATE');
+    // --- Cliente: crea o aggiorna --------------------------------------
+    $find = $pdo->prepare('SELECT `id` FROM `customers` WHERE `email` = :email FOR UPDATE');
     $find->execute([':email' => $email]);
     $customerId = $find->fetchColumn();
 
     if ($customerId === false) {
         $insert = $pdo->prepare(
-            'INSERT INTO customers
-               (first_name, last_name, email, phone, country, city, language,
-                privacy_optin, marketing_optin, bookings_count)
-             VALUES (:first_name, :last_name, :email, :phone, :country, :city, :language,
-                :privacy, :marketing, 1)'
+            'INSERT INTO `customers`
+               (`first_name`, `last_name`, `email`, `phone`, `city`, `country`,
+                `language`, `privacy_optin`, `marketing_optin`)
+             VALUES (:first_name, :last_name, :email, :phone, :city, :country,
+                :language, 1, :marketing)'
         );
         $insert->execute([
             ':first_name' => $firstName,
             ':last_name'  => $lastName,
             ':email'      => $email,
             ':phone'      => $phone !== '' ? $phone : null,
-            ':country'    => $country,
             ':city'       => $city !== '' ? $city : null,
+            ':country'    => $country,
             ':language'   => $locale,
-            ':privacy'    => 1,
             ':marketing'  => $marketing ? 1 : 0,
         ]);
         $customerId = (int) $pdo->lastInsertId();
     } else {
         $customerId = (int) $customerId;
-        // Returning guest: refresh the details, keep a granted marketing
-        // consent granted (COALESCE-style OR) and bump the counter.
+        // Cliente di ritorno: si aggiornano i dati, ma un consenso marketing
+        // già dato non si toglie da solo (GREATEST) e i campi lasciati vuoti
+        // non cancellano quello che c'era (COALESCE/NULLIF).
         $update = $pdo->prepare(
-            'UPDATE customers SET
-                first_name      = :first_name,
-                last_name       = :last_name,
-                phone           = COALESCE(NULLIF(:phone, \'\'), phone),
-                country         = :country,
-                city            = COALESCE(NULLIF(:city, \'\'), city),
-                language        = :language,
-                privacy_optin   = 1,
-                marketing_optin = GREATEST(marketing_optin, :marketing),
-                bookings_count  = bookings_count + 1
-              WHERE id = :id'
+            'UPDATE `customers` SET
+                `first_name`      = :first_name,
+                `last_name`       = :last_name,
+                `phone`           = COALESCE(NULLIF(:phone, \'\'), `phone`),
+                `city`            = COALESCE(NULLIF(:city, \'\'), `city`),
+                `country`         = :country,
+                `language`        = :language,
+                `privacy_optin`   = 1,
+                `marketing_optin` = GREATEST(`marketing_optin`, :marketing)
+              WHERE `id` = :id'
         );
         $update->execute([
             ':first_name' => $firstName,
             ':last_name'  => $lastName,
             ':phone'      => $phone,
-            ':country'    => $country,
             ':city'       => $city,
+            ':country'    => $country,
             ':language'   => $locale,
             ':marketing'  => $marketing ? 1 : 0,
             ':id'         => $customerId,
         ]);
     }
 
-    // --- Booking --------------------------------------------------------
-    $reference = sprintf(
-        'HS-%s-%s',
-        $checkIn->format('Y'),
-        strtoupper(bin2hex(random_bytes(3))) // 16.7M combinations, unique index catches the rest
-    );
+    // --- Prenotazione ---------------------------------------------------
+    $reference = sprintf('HS-%s-%s', $checkIn->format('Y'), strtoupper(bin2hex(random_bytes(3))));
 
     $book = $pdo->prepare(
-        'INSERT INTO bookings
-           (reference, customer_id, room_id, check_in, check_out, adults, children,
-            unit_price, extra_guest_price, extra_guests, accommodation_total,
-            cleaning_fee, tourist_tax_total, total_price, status, guest_message,
-            source, locale, ip_address, user_agent)
+        'INSERT INTO `bookings`
+           (`reference`, `customer_id`, `room_id`, `check_in`, `check_out`,
+            `adults`, `children`, `unit_price`, `total_price`, `status`,
+            `guest_message`, `locale`, `ip_address`)
          VALUES
-           (:reference, :customer_id, :room_id, :check_in, :check_out, :adults, :children,
-            :unit_price, :extra_guest_price, :extra_guests, :accommodation_total,
-            :cleaning_fee, :tourist_tax_total, :total_price, \'pending\', :guest_message,
-            \'website\', :locale, :ip_address, :user_agent)'
+           (:reference, :customer_id, :room_id, :check_in, :check_out,
+            :adults, :children, :unit_price, :total_price, \'pending\',
+            :guest_message, :locale, :ip_address)'
     );
 
     $book->bindValue(':reference', $reference);
@@ -371,22 +351,16 @@ try {
     $book->bindValue(':adults', $adults, PDO::PARAM_INT);
     $book->bindValue(':children', $children, PDO::PARAM_INT);
     $book->bindValue(':unit_price', number_format($unitPrice, 2, '.', ''));
-    $book->bindValue(':extra_guest_price', number_format($extraGuestPrice, 2, '.', ''));
-    $book->bindValue(':extra_guests', $extraGuests, PDO::PARAM_INT);
-    $book->bindValue(':accommodation_total', number_format($accommodation, 2, '.', ''));
-    $book->bindValue(':cleaning_fee', number_format($cleaningFee, 2, '.', ''));
-    $book->bindValue(':tourist_tax_total', number_format($touristTax, 2, '.', ''));
     $book->bindValue(':total_price', number_format($total, 2, '.', ''));
     $book->bindValue(':guest_message', $message !== '' ? $message : null);
     $book->bindValue(':locale', $locale);
     $book->bindValue(':ip_address', $ip, $ip === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
-    $book->bindValue(':user_agent', mb_substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255));
     $book->execute();
 
     $bookingId = (int) $pdo->lastInsertId();
 
     $pdo->commit();
-} catch (PDOException $e) {
+} catch (\PDOException $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
@@ -398,37 +372,29 @@ try {
     );
 }
 
-// ---------------------------------------------------------------------
-// 4. Emails — after the commit. A mail failure must not lose the booking,
-//    so it is logged and reported as a flag, not as an error response.
-// ---------------------------------------------------------------------
-$roomName = $locale === 'en' ? (string) $room['name_en'] : (string) $room['name_it'];
 
-$breakdown = [
-    sprintf('Sistemazione:        %s', $roomName),
-    sprintf('Arrivo:              %s', $checkIn->format('d/m/Y')),
-    sprintf('Partenza:            %s', $checkOut->format('d/m/Y')),
-    sprintf('Notti:               %d', $nights),
-    sprintf('Ospiti:              %d adulti, %d bambini', $adults, $children),
+// ---------------------------------------------------------------------
+// 4. Email — dopo il commit.
+// Se mail() fallisce la prenotazione è comunque salva: l'errore si scrive nel
+// log e si segnala nella risposta, non si annulla il lavoro fatto.
+// ---------------------------------------------------------------------
+$roomName = ($locale === 'en' && !empty($room['name_en'])) ? $room['name_en'] : $room['name'];
+
+$breakdown = implode("\n", [
+    sprintf('Sistemazione:  %s', $roomName),
+    sprintf('Arrivo:        %s', $checkIn->format('d/m/Y')),
+    sprintf('Partenza:      %s', $checkOut->format('d/m/Y')),
+    sprintf('Notti:         %d', $nights),
+    sprintf('Ospiti:        %d adulti, %d bambini', $adults, $children),
     '',
-    sprintf('Alloggio:            EUR %s', hs_money($accommodation)),
-];
-if ($extraGuests > 0) {
-    $breakdown[] = sprintf('  (include %d ospiti extra a EUR %s/notte)', $extraGuests, hs_money($extraGuestPrice));
-}
-if ($cleaningFee > 0) {
-    $breakdown[] = sprintf('Pulizia finale:      EUR %s', hs_money($cleaningFee));
-}
-if ($touristTax > 0) {
-    $breakdown[] = sprintf('Imposta di soggiorno: EUR %s', hs_money($touristTax));
-}
-$breakdown[] = sprintf('TOTALE:              EUR %s', hs_money($total));
-$breakdownText = implode("\n", $breakdown);
+    sprintf('Tariffa:       EUR %s a notte', hs_money($unitPrice)),
+    sprintf('TOTALE:        EUR %s', hs_money($total)),
+]);
 
 $guestName = $firstName . ' ' . $lastName;
 
-// Envelope sender on our own domain keeps SPF/DKIM valid; Reply-To routes
-// the farm's answer to the guest.
+// Mittente sul nostro dominio (SPF/DKIM validi); Reply-To porta la risposta
+// dell'azienda direttamente all'ospite.
 $headersToGuest = implode("\r\n", [
     'From: ' . hs_mime_header(HS_MAIL_FROM_NAME) . ' <' . HS_MAIL_FROM . '>',
     'Reply-To: ' . HS_MAIL_TO,
@@ -437,11 +403,8 @@ $headersToGuest = implode("\r\n", [
     'X-Mailer: humus-sapiens-booking',
 ]);
 
-$guestSubject = $locale === 'en'
-    ? 'Booking request received — Humus Sapiens (' . $reference . ')'
-    : 'Richiesta di prenotazione ricevuta — Humus Sapiens (' . $reference . ')';
-
 if ($locale === 'en') {
+    $guestSubject = 'Booking request received — Humus Sapiens (' . $reference . ')';
     $guestBody = <<<TXT
 Hello {$firstName},
 
@@ -450,7 +413,7 @@ availability by hand and reply within 24 hours.
 
 Reference: {$reference}
 
-{$breakdownText}
+{$breakdown}
 
 Prices are in euro and include VAT. Payment is arranged directly with us,
 with no intermediaries and no extra commission.
@@ -460,6 +423,7 @@ Loc. Baresi 15, 16030 Castiglione Chiavarese (GE)
 +39 327 8160257 · CIN IT010013B5EKQITTKX
 TXT;
 } else {
+    $guestSubject = 'Richiesta di prenotazione ricevuta — Humus Sapiens (' . $reference . ')';
     $guestBody = <<<TXT
 Ciao {$firstName},
 
@@ -468,7 +432,7 @@ verifichiamo la disponibilità a mano e ti rispondiamo entro 24 ore.
 
 Riferimento: {$reference}
 
-{$breakdownText}
+{$breakdown}
 
 Gli importi sono in euro e comprensivi di IVA. Il pagamento si concorda
 direttamente con noi: nessun intermediario, nessuna commissione aggiuntiva.
@@ -495,12 +459,13 @@ Città:    {$city} ({$country})
 Lingua:   {$locale}
 
 --- SOGGIORNO ------------------------------------
-{$breakdownText}
+{$breakdown}
 
 --- MESSAGGIO ------------------------------------
 {$message}
 
-Gestisci la richiesta: http://onenaturalecosistem.com/crm/dashboard.php
+Gestisci la richiesta:
+http://onenaturalecosistem.com/crm/dashboard.php
 TXT;
 
 $headersToStaff = implode("\r\n", [
@@ -529,7 +494,7 @@ $staffMailSent = @mail(
 
 if (!$guestMailSent || !$staffMailSent) {
     error_log(sprintf(
-        '[humus-api] mail() failed for %s (guest=%s, staff=%s)',
+        '[humus-api] mail() fallita per %s (ospite=%s, azienda=%s)',
         $reference,
         $guestMailSent ? 'ok' : 'FAIL',
         $staffMailSent ? 'ok' : 'FAIL'
@@ -537,38 +502,34 @@ if (!$guestMailSent || !$staffMailSent) {
 }
 
 if ($guestMailSent) {
-    $flag = $pdo->prepare('UPDATE bookings SET email_sent = 1 WHERE id = :id');
+    $flag = $pdo->prepare('UPDATE `bookings` SET `email_sent` = 1 WHERE `id` = :id');
     $flag->execute([':id' => $bookingId]);
 }
 
+
 // ---------------------------------------------------------------------
-// 5. Response
+// 5. Risposta
 // ---------------------------------------------------------------------
 hs_json([
-    'success'   => true,
-    'reference' => $reference,
-    'status'    => 'pending',
-    'message'   => $locale === 'en'
+    'success'    => true,
+    'reference'  => $reference,
+    'status'     => 'pending',
+    'message'    => $locale === 'en'
         ? 'Request received. We reply within 24 hours.'
         : 'Richiesta ricevuta. Ti rispondiamo entro 24 ore.',
-    'email_sent' => $guestMailSent,
-    'room'       => [
-        'slug' => (string) $room['slug'],
-        'name' => $roomName,
-    ],
-    'stay' => [
+    'email_sent' => (bool) $guestMailSent,
+    'room'       => ['slug' => $room['slug'], 'name' => $roomName],
+    'stay'       => [
         'check_in'  => $checkIn->format('Y-m-d'),
         'check_out' => $checkOut->format('Y-m-d'),
         'nights'    => $nights,
         'adults'    => $adults,
         'children'  => $children,
     ],
-    'price' => [
-        'accommodation' => round($accommodation, 2),
-        'extra_guests'  => $extraGuests,
-        'cleaning_fee'  => round($cleaningFee, 2),
-        'tourist_tax'   => round($touristTax, 2),
-        'total'         => $total,
-        'currency'      => 'EUR',
+    'price'      => [
+        'unit_price' => $unitPrice,
+        'nights'     => $nights,
+        'total'      => $total,
+        'currency'   => 'EUR',
     ],
 ], 201);

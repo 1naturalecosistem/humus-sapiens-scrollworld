@@ -90,3 +90,7 @@ frontend/node_modules/.cache/default-development/2.pack
 credentials.json
 *.key
 .credentials
+
+# Credenziali API/CRM: il repository è pubblico, questo file non deve entrarci.
+# Il modello da copiare è api/config.example.php
+api/config.php
