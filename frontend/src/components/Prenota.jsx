@@ -1,79 +1,11 @@
-import { useEffect, useState } from "react";
 import { useLang } from "../lib/i18n";
 import { CONTACT, CONTENT } from "../lib/content";
 import { Reveal, RevealWords } from "./Reveal";
 
-const WIDGET_ORIGIN = "https://widget.holiduhost.com";
-const WIDGET_SRC = `${WIDGET_ORIGIN}/widget/be6529bd-1f7a-4029-86d1-6a1e882b7e15`;
-const DIRECT_BOOKING_URL = `https://www.holidu.com/it/hosting/${encodeURIComponent("humus-sapiens")}`;
-
-// The widget lays out to whatever height its content needs — ~2700px on desktop
-// with the search form plus the property list — and reports that to the parent.
-// Until the first report lands we show a box tall enough for the search form and
-// the first results rather than clipping it to a few hundred pixels.
-const INITIAL_HEIGHT = 1500;
-const MIN_HEIGHT = 620;
-const WIDGET_READY_TIMEOUT_MS = 4000;
-
 export default function Prenota() {
   const { lang } = useLang();
   const t = CONTENT[lang].prenota;
-
-  const [height, setHeight] = useState(INITIAL_HEIGHT);
-  const [widgetFailed, setWidgetFailed] = useState(false);
-
-  useEffect(() => {
-    let timeoutId;
-    let frame;
-
-    function onMessage(event) {
-      if (event.origin !== WIDGET_ORIGIN) return;
-      const data = event.data;
-      if (!data || data.type !== "resize") return;
-      const h = Number(data.height);
-      if (Number.isFinite(h) && h > MIN_HEIGHT) {
-        setHeight(Math.ceil(h));
-        setWidgetFailed(false);
-      }
-    }
-
-    function onLoad() {
-      setWidgetFailed(false);
-      clearTimeout(timeoutId);
-    }
-
-    function onLoadError() {
-      setWidgetFailed(true);
-      clearTimeout(timeoutId);
-    }
-
-    window.addEventListener("message", onMessage);
-    window.addEventListener("error", onLoadError, true);
-
-    frame = document.querySelector('[data-testid="booking-widget"]');
-    if (frame) {
-      frame.addEventListener("load", onLoad);
-      frame.addEventListener("error", onLoadError);
-    }
-
-    timeoutId = window.setTimeout(() => {
-      if (frame && frame.contentDocument?.readyState === "complete") {
-        setWidgetFailed(false);
-      } else {
-        setWidgetFailed(true);
-      }
-    }, WIDGET_READY_TIMEOUT_MS);
-
-    return () => {
-      window.removeEventListener("message", onMessage);
-      window.removeEventListener("error", onLoadError, true);
-      clearTimeout(timeoutId);
-      if (frame) {
-        frame.removeEventListener("load", onLoad);
-        frame.removeEventListener("error", onLoadError);
-      }
-    };
-  }, []);
+  const mailto = `mailto:${CONTACT.email}?subject=${encodeURIComponent(lang === "it" ? "Prenotazione soggiorno — Humus Sapiens" : "Stay booking — Humus Sapiens")}`;
 
   return (
     <section id="prenota" data-testid="prenota-section" className="relative bg-[#F5F3E9] py-28 md:py-40">
@@ -90,39 +22,26 @@ export default function Prenota() {
         </div>
 
         <Reveal y={24}>
-          <div className="border border-[#1A3626]/15 bg-white/40 p-2 md:p-4">
-            {widgetFailed ? (
-              <div className="rounded-lg border border-[#1A3626]/15 bg-[#F5F3E9] p-6 text-left">
-                <p className="font-body text-base text-[#1A3626]">{t.fallbackTitle}</p>
-                <p className="mt-3 font-body text-sm text-[#1A3626]/70">{t.fallbackBody}</p>
-                <a
-                  href={DIRECT_BOOKING_URL}
-                  target="_blank"
-                  rel="noreferrer"
-                  data-testid="booking-fallback-link"
-                  className="mt-5 inline-flex items-center rounded-full bg-[#1A3626] px-5 py-3 text-sm font-medium text-[#F5F3E9] transition hover:bg-[#2f4c3a]"
-                >
-                  {t.fallbackCta}
-                </a>
-                <p className="mt-4 font-mono-label text-[10px] tracking-label text-[#1A3626]/50">
-                  {CONTACT.email} · {CONTACT.phone}
-                </p>
-              </div>
-            ) : (
-              <iframe
-                title={t.iframeTitle}
-                src={WIDGET_SRC}
-                data-testid="booking-widget"
-                className="w-full block border-0"
-                style={{ height, minHeight: MIN_HEIGHT }}
-                scrolling="auto"
-                loading="lazy"
-                referrerPolicy="strict-origin-when-cross-origin"
-                onError={() => setWidgetFailed(true)}
-              />
-            )}
+          <div className="rounded-[2rem] border border-[#1A3626]/15 bg-white p-8 shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
+            <h3 className="font-display text-3xl text-[#1A3626]">{lang === "it" ? "Soggiorna in Villa Levante o Ponente" : "Stay in Villa Levante or Ponente"}</h3>
+            <p className="mt-4 font-body text-base leading-relaxed text-[#1A3626]/75">{lang === "it" ? "Due ville indipendenti, una proposta diretta e riservata. Scrivici per verificare disponibilità, date e tariffe personalizzate." : "Two independent villas, a direct and private offer. Contact us to check availability, dates and tailored rates."}</p>
+            <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center">
+              <a
+                href={mailto}
+                data-testid="booking-contact-link"
+                className="inline-flex items-center justify-center rounded-full bg-[#1A3626] px-6 py-3 text-sm font-medium text-[#F5F3E9] transition hover:bg-[#2f4c3a]"
+              >
+                {lang === "it" ? "Scrivici per prenotare" : "Email to book"}
+              </a>
+              <a
+                href={`tel:${CONTACT.phoneRaw}`}
+                className="inline-flex items-center justify-center rounded-full border border-[#1A3626] px-6 py-3 text-sm font-medium text-[#1A3626] transition hover:bg-[#D48924] hover:text-white"
+              >
+                {lang === "it" ? "Chiama per disponibilità" : "Call for availability"}
+              </a>
+            </div>
+            <p className="mt-5 font-mono-label text-[10px] tracking-label text-[#1A3626]/50">{t.note}</p>
           </div>
-          <p className="mt-5 font-mono-label text-[10px] tracking-label text-[#1A3626]/50">{t.note}</p>
         </Reveal>
       </div>
     </section>

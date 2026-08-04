@@ -26,9 +26,9 @@ function ProductCard({ data, lang, delay }) {
   const c = data[lang];
   const t = CONTENT[lang].shop;
   const mailto = `mailto:${CONTACT.email}?subject=${encodeURIComponent("Ordine miele — " + c.name)}`;
+
   return (
     <Reveal delay={delay} y={36} className="group bg-[#F5F3E9] border border-[#1A3626]/15 flex flex-col overflow-hidden">
-      {/* Label strip */}
       <div className="relative bg-white overflow-hidden border-b border-[#1A3626]/10">
         <img
           src={data.label}
@@ -64,6 +64,15 @@ function ProductCard({ data, lang, delay }) {
           {t.order}
         </a>
       </div>
+    </Reveal>
+  );
+}
+
+function CategorySection({ category, lang, delay }) {
+  return (
+    <Reveal delay={delay} y={24} className="rounded-[2rem] border border-[#1A3626]/15 bg-white/80 p-8 shadow-[0_16px_48px_rgba(0,0,0,0.06)]">
+      <h3 className="font-display text-3xl text-[#1A3626]">{category.label[lang]}</h3>
+      <p className="mt-4 font-body text-base leading-relaxed text-[#1A3626]/70">{category.description[lang]}</p>
     </Reveal>
   );
 }
@@ -109,7 +118,7 @@ export default function Shop() {
           </p>
         </Reveal>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
           <StoreAction
             title={lang === "it" ? "Compra il miele" : "Buy the honey"}
             body={lang === "it" ? "Ordini diretti via email o telefono, consegna personalizzata e pagamento diretto." : "Direct orders by email or phone, personalized delivery and direct payment."}
@@ -127,8 +136,8 @@ export default function Shop() {
             delay={0.08}
           />
           <StoreAction
-            title={lang === "it" ? "Prenota il soggiorno" : "Book your stay"}
-            body={lang === "it" ? "Camere e esperienze disponibili con prenotazione diretta, senza intermediari." : "Rooms and experiences available with direct booking, no intermediaries."}
+            title={lang === "it" ? "Prenota Villa Levante o Ponente" : "Book Villa Levante or Ponente"}
+            body={lang === "it" ? "Due ville indipendenti disponibili con prenotazione diretta e senza intermediari." : "Two independent villas available with direct booking and no intermediaries."}
             cta={lang === "it" ? "Verifica disponibilità" : "Check availability"}
             href="#prenota"
             accent="#2f4c3a"
@@ -136,15 +145,21 @@ export default function Shop() {
           />
         </div>
 
-        <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-2">
-          <ProductCard data={SHOP.castagno} lang={lang} delay={0.2} />
-          <ProductCard data={SHOP.millefiori} lang={lang} delay={0.28} />
-        </div>
+        {SHOP.categories.map((category, index) => (
+          <div key={category.id} className="mt-14">
+            <CategorySection category={category} lang={lang} delay={0.08 * index} />
+            <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+              {category.items.map((itemKey, itemIndex) => (
+                <ProductCard key={itemKey} data={SHOP[itemKey]} lang={lang} delay={0.08 * itemIndex} />
+              ))}
+            </div>
+          </div>
+        ))}
 
         <Reveal className="mt-10 rounded-[2rem] border border-[#1A3626]/15 bg-white/90 p-8 text-[#1A3626] shadow-[0_20px_60px_rgba(0,0,0,0.08)]" y={16}>
           <p className="font-body text-base leading-relaxed">
             {lang === "it"
-              ? "Acquista e sostieni in modo diretto: zero frizioni, zero commissioni di piattaforma. Il tuo ordine arriva da chi coltiva, alleva e trasforma nel territorio." 
+              ? "Acquista e sostieni in modo diretto: zero frizioni, zero commissioni di piattaforma. Il tuo ordine arriva da chi coltiva, alleva e trasforma nel territorio."
               : "Buy and support directly: zero friction, zero platform fees. Your order comes from those who cultivate, raise and process within the territory."}
           </p>
           <div className="mt-6 flex flex-wrap gap-3">

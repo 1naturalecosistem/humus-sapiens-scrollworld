@@ -87,9 +87,9 @@ fi
 # presence means an outdated public/ got copied over the new one.
 [ -d "$BUILD/assets/frames" ] && fail "assets/frames esiste ancora: public/ non è aggiornato"
 
-# The base path has to match package.json's homepage or every asset 404s.
-grep -q '/humus-sapiens-scrollworld/' "$BUILD/index.html" \
-  || fail "index.html non contiene il base path /humus-sapiens-scrollworld/ (homepage sbagliata?)"
+# The site is published on a custom domain, so the built HTML must reference it.
+grep -q 'humussapiens.onenaturalecosistem.com' "$BUILD/index.html" \
+  || fail "index.html non contiene il custom domain humussapiens.onenaturalecosistem.com (homepage sbagliata?)"
 
 printf '    ok — %s\n' "$(du -sh "$BUILD" | cut -f1) di build, volo completo"
 

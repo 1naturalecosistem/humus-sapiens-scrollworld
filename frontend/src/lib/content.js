@@ -56,6 +56,17 @@ export const NAV = {
 
 // Honey shop — extendable with new products later.
 export const SHOP = {
+  categories: [
+    {
+      id: "mieli",
+      label: { it: "Mieli del fondo", en: "Farm honeys" },
+      description: {
+        it: "Due profili di miele artigianale, direttamente dall'alveare del fondo. Ordina via email per pagamento diretto.",
+        en: "Two artisanal honey profiles, straight from the farm apiary. Order by email for direct payment.",
+      },
+      items: ["castagno", "millefiori"],
+    },
+  ],
   castagno: {
     label: `${process.env.PUBLIC_URL}/label_castagno.png`,
     accent: "#8a5a2b",
@@ -218,7 +229,7 @@ export const CONTENT = {
       heading: "Non una vacanza nel verde.",
       headingEm: "Il ritmo di un suolo vero",
       lead:
-        "Due ville in agriturismo e otto piazzole immerse in una food forest in sviluppo, a 672 metri di quota, dentro la Rete Natura 2000. Non un campeggio vicino alla natura: dentro un sistema che sta crescendo. A venti minuti dal mare di Sestri Levante, a un mondo di distanza.",
+        "Due ville in agriturismo, Villa Levante e Villa Ponente, e otto piazzole immerse in una food forest in sviluppo, a 672 metri di quota, dentro la Rete Natura 2000. Non un campeggio vicino alla natura: dentro un sistema che sta crescendo. A venti minuti dal mare di Sestri Levante, a un mondo di distanza.",
       stats: [
         { v: "672 m", k: "sul livello del mare" },
         { v: "8 × 20 m²", k: "piazzole nella food forest" },
@@ -232,7 +243,7 @@ export const CONTENT = {
       heading: "Prenota il tuo",
       headingEm: "soggiorno",
       lead:
-        "Scegli le date e prenota direttamente con noi: nessun intermediario, nessuna commissione aggiuntiva. Ville in agriturismo e piazzole nella food forest.",
+        "Scegli Villa Levante o Villa Ponente e prenota direttamente con noi: nessun intermediario e nessuna commissione aggiuntiva.",
       iframeTitle: "Prenotazione soggiorno — Humus Sapiens",
       note: "Prenotazione diretta · CIN IT010013B5EKQITTKX",
       fallbackTitle: "Il widget di prenotazione non è disponibile in questo momento.",

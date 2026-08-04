@@ -28,10 +28,10 @@ Tutto quello che si vede sul sito è materiale dell'azienda: nessuna foto stock,
 nessun asset caricato da un host esterno.
 
 Gli originali (scatti da telefono, clip WhatsApp) stanno **fuori dal repo**, in
-`../media da integrare/`. I file che il sito serve sono ritagli derivati:
+`../media-da-integrare/`. I file che il sito serve sono ritagli derivati:
 
 ```bash
-python3 scripts/prepare_media.py "../media da integrare"
+python3 scripts/prepare_media.py "../media-da-integrare"
 ```
 
 Lo script scrive in `frontend/public/`. Le regole di ritaglio — riquadro,
@@ -81,7 +81,7 @@ Il volo è un video H.264 scrubato dallo scroll, non una sequenza di frame.
 
 ### Ricostruire il volo
 
-La pipeline sta in `../../Volo Drone scrolldown/_build/` (fuori dal repo, ~500 MB
+La pipeline sta in `../../volo-drone-scrolldown/_build/` (fuori dal repo, ~500 MB
 di intermedi — si può cancellare, si rigenera dalle riprese originali):
 
 ```bash

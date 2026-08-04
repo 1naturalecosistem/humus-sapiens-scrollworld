@@ -53,7 +53,7 @@ export const HUMUS_SCROLL_WORLD = {
       mobilePortrait: `${BASE}/flight-mobile-portrait.mp4`,
     },
     // device-pixel width above which the hi-dpi ladder step is worth its bytes
-    hidpiMinWidth: 2000,
+    hidpiMinWidth: 1600,
     // viewport aspect (w/h) below which the portrait crop wins
     portraitMaxAspect: 0.85,
 
@@ -66,10 +66,10 @@ export const HUMUS_SCROLL_WORLD = {
     // in seconds. This is what makes the flight feel unhurried rather than
     // nailed to the wheel: the camera eases toward where you scrolled instead of
     // snapping to it. Larger = more float, but also more lag.
-    followTau: 0.16,
+    followTau: 0.12,
 
     // Don't bother re-seeking for less than half a frame of movement.
-    minSeekStep: 1 / 48,
+    minSeekStep: 1 / 60,
 
     // Buffered fraction required before the flight is handed over to the
     // scroll. The scrub is clamped to the buffered range anyway, so this only
